@@ -1,0 +1,78 @@
+﻿
+  7:17  error  Fast 
+refresh only works 
+when a file only 
+exports components. 
+Use a new file to 
+share constants or 
+functions between 
+components  react-ref
+resh/only-export-comp
+onents
+   3:60  error    
+Unexpected any. 
+Specify a different 
+type                 
+                     
+                     
+                     
+                     
+                     
+                     
+                     
+                   @t
+ypescript-eslint/no-e
+xplicit-any
+  16:27  error    
+Unexpected any. 
+Specify a different 
+type                 
+                     
+                     
+                     
+                     
+                     
+                     
+                     
+                   @t
+ypescript-eslint/no-e
+xplicit-any
+  28:8   warning  
+React Hook useEffect 
+was passed a 
+dependency list that 
+is not an array 
+literal. This means 
+we can't statically 
+verify whether 
+you've passed the 
+correct dependencies 
+                     
+                     
+                react
+-hooks/exhaustive-dep
+s
+  28:8   warning  
+React Hook useEffect 
+has a missing 
+dependency: 
+'apiFunc'. Either 
+include it or remove 
+the dependency 
+array. If 'apiFunc' 
+changes too often, 
+find the parent 
+component that 
+defines it and wrap 
+that definition in 
+useCallback  react-ho
+oks/exhaustive-deps
+  27:22  error  
+'err' is defined but 
+never used  @typescri
+pt-eslint/no-unused-v
+ars
+Ô£û 6 problems (4 
+errors, 2 warnings)
+
+
