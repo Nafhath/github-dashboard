@@ -32,12 +32,12 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-secondary p-[2px]">
                         <div className="w-full h-full rounded-full bg-slate-900 border-2 border-slate-900 overflow-hidden">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="User Avatar" />
+                            <img src="https://github.com/mhmdn.png" alt="User Avatar" />
                         </div>
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
-                        <p className="text-slate-400 text-sm">Welcome back, Alex</p>
+                        <p className="text-slate-400 text-sm">Welcome back, Nafhath</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
