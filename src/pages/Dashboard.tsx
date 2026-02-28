@@ -32,7 +32,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-secondary p-[2px]">
                         <div className="w-full h-full rounded-full bg-slate-900 border-2 border-slate-900 overflow-hidden">
-                            <img src="https://avatars.githubusercontent.com/u/64386740?v=4" alt="User Avatar" className="w-full h-full object-cover" />
+                            <img src="https://avatars.githubusercontent.com/u/64386740?s=400&u=a4192efd15e5e8468904f26c4e3defa88cf1dd77&v=4" alt="User Avatar" className="w-full h-full object-cover" />
                         </div>
                     </div>
                     <div>
