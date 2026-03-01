@@ -41,7 +41,12 @@ export const getDashboardStats = async (req, res, next) => {
 
                         let title = event.type;
                         if (event.type === 'PushEvent') {
-                            title = event.payload.commits?.[0]?.message?.split('\n')[0] || 'Push to branch';
+                            const branch = event.payload.ref?.replace('refs/heads/', '') || 'main';
+                            const commitMsg = event.payload.commits?.find(c => c.message?.trim())?.message?.split('\n')[0]?.trim();
+                            const count = event.payload.size || event.payload.commits?.length || 1;
+                            title = commitMsg
+                                ? `${commitMsg}`
+                                : `Pushed ${count} commit${count !== 1 ? 's' : ''} to ${branch}`;
                         } else if (event.type === 'IssuesEvent') {
                             title = `${event.payload.action} issue: ${event.payload.issue?.title || ''}`;
                         } else if (event.type === 'PullRequestEvent') {
