@@ -118,9 +118,21 @@ export const fetchRepoDetails = async (owner, repo) => {
     try {
         const client = getGithubClient();
 
-        // Fetch base repo info, contributors, and languages in parallel
-        const [repoRes, contribsRes, langsRes] = await Promise.all([
-            client.get(`/repos/${owner}/${repo}`),
+        let repoRes;
+        try {
+            repoRes = await client.get(`/repos/${owner}/${repo}`);
+        } catch (err) {
+            const status = err.response?.status;
+            if (status === 404) {
+                const err404 = new Error(`Repository '${owner}/${repo}' not found or is private.`);
+                err404.statusCode = 404;
+                throw err404;
+            }
+            throw err;
+        }
+
+        // Fetch contributors and languages in parallel (safe, non-fatal)
+        const [contribsRes, langsRes] = await Promise.all([
             client.get(`/repos/${owner}/${repo}/contributors?per_page=15`).catch(() => ({ data: [] })),
             client.get(`/repos/${owner}/${repo}/languages`).catch(() => ({ data: {} }))
         ]);

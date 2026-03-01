@@ -16,6 +16,9 @@ export const getRepoDetails = async (req, res, next) => {
         const details = await fetchRepoDetails(owner, repo);
         res.json(details);
     } catch (error) {
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ error: error.message });
+        }
         next(error);
     }
 };

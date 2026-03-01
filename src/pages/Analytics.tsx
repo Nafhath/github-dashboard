@@ -54,20 +54,30 @@ export const Analytics: React.FC = () => {
                 </div>
                 <p className="text-sm text-slate-500 font-medium">Last 30 days vs previous period</p>
 
-                <div className="mt-10 h-16 flex items-end gap-1 opacity-20 px-4 mix-blend-screen">
-                    <div className="flex-1 bg-slate-500 rounded-t-lg transition-all duration-500 hover:bg-primary" style={{ height: '20%' }}></div>
-                    <div className="flex-1 bg-slate-500 rounded-t-lg transition-all duration-500 hover:bg-primary" style={{ height: '40%' }}></div>
-                    <div className="flex-1 bg-slate-500 rounded-t-lg transition-all duration-500 hover:bg-primary" style={{ height: '30%' }}></div>
-                    <div className="flex-1 bg-slate-500 rounded-t-lg transition-all duration-500 hover:bg-primary" style={{ height: '80%' }}></div>
-                    <div className="flex-1 bg-slate-500 rounded-t-lg transition-all duration-500 hover:bg-primary" style={{ height: '50%' }}></div>
-                </div>
-                <div className="flex justify-between px-6 mt-3 text-[10px] font-bold text-slate-600 tracking-widest">
-                    <span>REPO A</span>
-                    <span>REPO B</span>
-                    <span>REPO C</span>
-                    <span>REPO D</span>
-                    <span>REPO E</span>
-                </div>
+                {data.repoActivity && data.repoActivity.length > 0 && (() => {
+                    const maxCommits = Math.max(...data.repoActivity.map((r: any) => r.commits), 1);
+                    return (
+                        <div className="mt-8">
+                            <div className="flex items-end gap-2 h-20">
+                                {data.repoActivity.map((repo: any, i: number) => (
+                                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                        <div
+                                            className="w-full bg-primary/60 hover:bg-primary transition-colors rounded-t-sm"
+                                            style={{ height: `${Math.max((repo.commits / maxCommits) * 100, 8)}%` }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between mt-2">
+                                {data.repoActivity.map((repo: any, i: number) => (
+                                    <span key={i} className="flex-1 text-center text-[9px] font-bold text-slate-600 tracking-widest uppercase truncate px-0.5">
+                                        {repo.name.length > 8 ? repo.name.substring(0, 8) + '…' : repo.name}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
             </Card>
 
             <Card className="p-6">
