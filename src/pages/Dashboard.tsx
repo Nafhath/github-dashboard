@@ -123,15 +123,18 @@ export const Dashboard: React.FC = () => {
                 <h2 className="text-xl font-bold text-white mb-4">Recent Activity</h2>
                 <div className="space-y-3">
                     {data.recentActivities && data.recentActivities.length > 0 ? data.recentActivities.map((activity: Activity) => (
-                        <Card key={activity.id} className="p-4 flex items-center gap-4 hover:bg-slate-800/60 transition-colors">
-                            <div className="p-2.5 rounded-xl bg-slate-900/50 border border-slate-700/50 shadow-inner">
+                        <Card key={activity.id} className="p-4 flex items-center gap-4 hover:bg-slate-800/60 transition-colors cursor-default">
+                            <div className="p-2.5 rounded-xl bg-slate-900/50 border border-slate-700/50 shadow-inner shrink-0">
                                 {getActivityIcon(activity.type)}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-slate-200 truncate">{activity.title}</p>
-                                <p className="text-xs text-slate-500 mt-1">
-                                    {activity.type === 'pr' ? `By ${activity.author}` : `In ${activity.repo}`} • {activity.timestamp}
-                                </p>
+                                <p className="text-sm font-semibold text-slate-100 truncate">{activity.title}</p>
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 shadow-[0_0_8px_rgba(14,165,233,0.15)]">
+                                        {activity.repo}
+                                    </span>
+                                    <span className="text-xs text-slate-500">{activity.timestamp}</span>
+                                </div>
                             </div>
                             {activity.status === 'merged' && (
                                 <Badge variant="success" dot>Merged</Badge>
