@@ -18,13 +18,18 @@ export const getDashboardStats = async (req, res, next) => {
         let activities = [];
         try {
             if (process.env.GITHUB_TOKEN) {
-                // /user/events uses the authenticated user (Nafhath), not the placeholder username
-                const eventsRes = await axios.get(`https://api.github.com/user/events?per_page=15`, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Authorization': `token ${process.env.GITHUB_TOKEN}`
-                    }
-                });
+                const headers = {
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Authorization': `token ${process.env.GITHUB_TOKEN}`
+                };
+                // First get the authenticated user's real login (could be 'Nafhath', not 'octocat')
+                const meRes = await axios.get('https://api.github.com/user', { headers });
+                const realLogin = meRes.data.login;
+                // Fetch events performed by the authenticated user
+                const eventsRes = await axios.get(
+                    `https://api.github.com/users/${realLogin}/events?per_page=15`,
+                    { headers }
+                );
 
                 activities = eventsRes.data
                     .filter(e => ['PushEvent', 'IssuesEvent', 'PullRequestEvent', 'CreateEvent'].includes(e.type))

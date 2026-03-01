@@ -104,7 +104,7 @@ export const Analytics: React.FC = () => {
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-1">
                             <span className="text-[10px] text-slate-400 font-semibold tracking-wider">Total</span>
-                            <span className="text-xl font-black text-white leading-none mt-1">3</span>
+                            <span className="text-xl font-black text-white leading-none mt-1">{data.languageDistribution?.length || 0}</span>
                         </div>
                     </div>
                     <div className="flex-1 space-y-5 flex flex-col justify-center">
