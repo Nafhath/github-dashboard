@@ -104,8 +104,8 @@ export const Dashboard: React.FC = () => {
 
                         <div className="flex items-end justify-between">
                             <div>
-                                <p className="text-slate-400 text-sm">Last active 2 hours ago</p>
-                                <p className="text-secondary font-medium text-sm mt-1">High volume this week</p>
+                                <p className="text-slate-400 text-sm">Last active {data.lastActiveRelative || 'recently'}</p>
+                                <p className="text-secondary font-medium text-sm mt-1">{data.totalCommits} of your commits</p>
                             </div>
                             <Button
                                 className="shadow-[0_0_20px_rgba(14,165,233,0.3)]"
@@ -122,17 +122,13 @@ export const Dashboard: React.FC = () => {
             <div>
                 <h2 className="text-xl font-bold text-white mb-4">Recent Activity</h2>
                 <div className="space-y-3">
-                    {data.recentActivities.map((activity: Activity) => (
+                    {data.recentActivities && data.recentActivities.length > 0 ? data.recentActivities.map((activity: Activity) => (
                         <Card key={activity.id} className="p-4 flex items-center gap-4 hover:bg-slate-800/60 transition-colors">
                             <div className="p-2.5 rounded-xl bg-slate-900/50 border border-slate-700/50 shadow-inner">
                                 {getActivityIcon(activity.type)}
                             </div>
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-white">
-                                    <span className="text-slate-300 font-semibold">{activity.title.split(' ')[0]} {activity.title.split(' ')[1]}</span>
-                                    {" "}
-                                    <span className="text-primary">{activity.title.split(' ').slice(2).join(' ')}</span>
-                                </p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-200 truncate">{activity.title}</p>
                                 <p className="text-xs text-slate-500 mt-1">
                                     {activity.type === 'pr' ? `By ${activity.author}` : `In ${activity.repo}`} • {activity.timestamp}
                                 </p>
@@ -141,7 +137,11 @@ export const Dashboard: React.FC = () => {
                                 <Badge variant="success" dot>Merged</Badge>
                             )}
                         </Card>
-                    ))}
+                    )) : (
+                        <Card className="p-6 text-slate-500 text-center text-sm">
+                            No recent activity found. Your latest GitHub events will appear here.
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

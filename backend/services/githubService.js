@@ -37,7 +37,8 @@ export const fetchRepositories = async (username = 'octocat') => {
 
         if (process.env.GITHUB_TOKEN && username === 'octocat') {
             // Fetch authenticated user's repos (includes all org repos they're a member of)
-            response = await client.get(`/user/repos?per_page=100&sort=updated&affiliation=owner,organization_member`);
+            response = await client.get(`/user/repos?per_page=100&sort=updated&affiliation=owner,organization_member,collaborator`);
+
             // Get authenticated user's actual login
             try {
                 const meRes = await client.get(`/user`);
