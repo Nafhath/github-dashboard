@@ -80,7 +80,7 @@ export const Groups: React.FC = () => {
                             {groupRepos.length > 0 ? (
                                 <>
                                     {groupRepos.map(repo => (
-                                        <Card key={repo.id} onClick={() => navigate(`/repo/Nafhath/${repo.name}`)} className="flex items-center justify-between py-3 px-4 group bg-slate-800/20 border-slate-700/50 backdrop-blur-none cursor-pointer hover:bg-slate-800/40 mb-2">
+                                        <Card key={repo.id} onClick={() => navigate(`/repo/${repo.owner}/${repo.name}`)} className="flex items-center justify-between py-3 px-4 group bg-slate-800/20 border-slate-700/50 backdrop-blur-none cursor-pointer hover:bg-slate-800/40 mb-2">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg>

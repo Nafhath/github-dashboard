@@ -67,6 +67,7 @@ export const getDashboardStats = async (req, res, next) => {
             reposIncrease: 1,
             commitsIncrease: 2,
             mostActiveRepo: mostRecentRepo?.name || 'None',
+            mostActiveRepoOwner: mostRecentRepo?.owner || 'Nafhath',
             mostRecentRepoUpdatedAt: mostRecentRepo?.updatedAt || null,
             recentActivities: activities,
         });

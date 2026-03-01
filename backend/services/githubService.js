@@ -48,6 +48,7 @@ export const fetchRepositories = async (username = 'octocat') => {
                 return {
                     id: repo.id.toString(),
                     name: repo.name,
+                    owner: repo.owner.login,
                     description: repo.description,
                     language: repo.language || 'Unknown',
                     stars: repo.stargazers_count,

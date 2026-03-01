@@ -1,6 +1,7 @@
 export interface Repository {
     id: string;
     name: string;
+    owner: string;
     description: string;
     language: string;
     stars: number;
