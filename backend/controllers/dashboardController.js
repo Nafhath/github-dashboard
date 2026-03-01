@@ -18,8 +18,8 @@ export const getDashboardStats = async (req, res, next) => {
         let activities = [];
         try {
             if (process.env.GITHUB_TOKEN) {
-                // /users/:username/events gives real recent events (public + orgs if authed)
-                const eventsRes = await axios.get(`https://api.github.com/users/${username}/events?per_page=10`, {
+                // /user/events uses the authenticated user (Nafhath), not the placeholder username
+                const eventsRes = await axios.get(`https://api.github.com/user/events?per_page=15`, {
                     headers: {
                         'Accept': 'application/vnd.github.v3+json',
                         'Authorization': `token ${process.env.GITHUB_TOKEN}`
