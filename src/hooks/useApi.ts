@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useApi<T>(apiFunc: () => Promise<T>, deps: any[] = []) {
     const [data, setData] = useState<T | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const stableFunc = useCallback(apiFunc, deps);
 
     useEffect(() => {
         let isMounted = true;
@@ -11,7 +14,7 @@ export function useApi<T>(apiFunc: () => Promise<T>, deps: any[] = []) {
             setLoading(true);
             setError(null);
             try {
-                const result = await apiFunc();
+                const result = await stableFunc();
                 if (isMounted) setData(result);
             } catch (err: any) {
                 if (isMounted) setError(err.message || 'An error occurred');
@@ -25,7 +28,7 @@ export function useApi<T>(apiFunc: () => Promise<T>, deps: any[] = []) {
         return () => {
             isMounted = false;
         };
-    }, [apiFunc, ...deps]);
+    }, [stableFunc]);
 
     return { data, loading, error };
 }
