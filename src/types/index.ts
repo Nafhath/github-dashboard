@@ -2,12 +2,15 @@ export interface Repository {
     id: string;
     name: string;
     owner: string;
+    ownerAvatarUrl: string;
     description: string;
     language: string;
     stars: number;
     forks: number;
     commits: number;
+    userCommits: number;
     isPrivate: boolean;
+    isOwnedByUser: boolean;
     updatedAt: string;
 }
 

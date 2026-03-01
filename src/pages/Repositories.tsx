@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreVertical, Star, GitFork, GitCommit, Lock } from 'lucide-react';
+import { Star, GitFork, GitCommit, Lock, User } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
@@ -8,6 +8,7 @@ import { Spinner } from '../components/ui/Spinner';
 import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
+import type { Repository } from '../types';
 
 export const Repositories: React.FC = () => {
     const navigate = useNavigate();
@@ -57,32 +58,59 @@ export const Repositories: React.FC = () => {
             </div>
 
             <div className="space-y-4 mt-6">
-                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest pl-2">Recent Repositories</h2>
-                {repos.map(repo => (
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest pl-2">
+                    {repos.filter((r: Repository) => r.isOwnedByUser).length > 0 ? 'Your Repositories First' : 'Recent Repositories'}
+                </h2>
+                {repos.map((repo: Repository) => (
                     <Card key={repo.id} onClick={() => navigate(`/repo/${repo.owner}/${repo.name}`)} className="p-5 flex flex-col gap-3 group hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors pointer-events-none" />
+
                         <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-semibold text-slate-200 group-hover:text-primary transition-colors">{repo.name}</h3>
-                                {repo.isPrivate && <Lock size={14} className="text-slate-500" />}
+                            <div className="flex items-center gap-2 flex-1 min-w-0 pr-4">
+                                <h3 className="text-lg font-semibold text-slate-200 group-hover:text-primary transition-colors truncate">{repo.name}</h3>
+                                {repo.isPrivate && <Lock size={14} className="text-slate-500 shrink-0" />}
+                                {!repo.isOwnedByUser && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                                        {repo.owner}
+                                    </span>
+                                )}
                             </div>
-                            <Button variant="ghost" size="icon" className="w-8 h-8 -mr-2 text-slate-400 hover:text-white">
-                                <MoreVertical size={18} />
-                            </Button>
+
+                            {/* Owner avatar in top-right corner */}
+                            <div className="shrink-0 relative" title={repo.owner}>
+                                {repo.ownerAvatarUrl ? (
+                                    <img
+                                        src={repo.ownerAvatarUrl}
+                                        alt={repo.owner}
+                                        className="w-8 h-8 rounded-full border-2 border-slate-700 group-hover:border-primary/50 transition-colors shadow-md object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
+                                        <User size={14} className="text-slate-400" />
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <p className="text-sm text-slate-400/80 leading-relaxed pr-8 line-clamp-2">
-                            {repo.description}
+                        <p className="text-sm text-slate-400/80 leading-relaxed pr-2 line-clamp-2">
+                            {repo.description || <span className="italic text-slate-600">No description</span>}
                         </p>
 
-                        <div className="flex items-center gap-5 mt-2 text-xs text-slate-400 font-medium">
+                        <div className="flex items-center gap-5 mt-2 text-xs text-slate-400 font-medium flex-wrap">
                             <span className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full ${getDotColor(repo.language)} shadow-sm`} />
                                 {repo.language}
                             </span>
                             <span className="flex items-center gap-1 hover:text-white transition-colors"><Star size={14} /> {(repo.stars >= 1000) ? `${(repo.stars / 1000).toFixed(1)}k` : repo.stars}</span>
                             <span className="flex items-center gap-1 hover:text-white transition-colors"><GitFork size={14} /> {repo.forks}</span>
-                            <span className="flex items-center gap-1 hover:text-white transition-colors"><GitCommit size={14} /> {(repo.commits >= 1000) ? `${(repo.commits / 1000).toFixed(1)}k commits` : `${repo.commits} commits`}</span>
+                            <span className="flex items-center gap-1 hover:text-white transition-colors">
+                                <GitCommit size={14} /> {repo.commits >= 1000 ? `${(repo.commits / 1000).toFixed(1)}k` : repo.commits} total
+                            </span>
+                            {repo.userCommits > 0 && (
+                                <span className="flex items-center gap-1 text-primary font-semibold">
+                                    <GitCommit size={14} className="text-primary" /> {repo.userCommits} mine
+                                </span>
+                            )}
                         </div>
                     </Card>
                 ))}

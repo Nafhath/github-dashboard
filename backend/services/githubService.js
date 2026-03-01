@@ -33,32 +33,54 @@ export const fetchRepositories = async (username = 'octocat') => {
     try {
         const client = getGithubClient();
         let response;
+        let authenticatedLogin = username;
+
         if (process.env.GITHUB_TOKEN && username === 'octocat') {
-            response = await client.get(`/user/repos?per_page=100&sort=updated`);
+            // Fetch authenticated user's repos (includes all org repos they're a member of)
+            response = await client.get(`/user/repos?per_page=100&sort=updated&affiliation=owner,organization_member`);
+            // Get authenticated user's actual login
+            try {
+                const meRes = await client.get(`/user`);
+                authenticatedLogin = meRes.data.login;
+            } catch (_) { }
         } else {
             response = await client.get(`/users/${username}/repos?per_page=100&sort=updated`);
         }
 
-        // Enrich with commit counts in parallel, limited to top 15 to avoid rate-limit blowup if no token
+        // Enrich top repos with total commits + user-specific commit count + avatar
         const topRepos = response.data.slice(0, 15);
+        const authLogin = authenticatedLogin;
 
         const enrichedRepos = await Promise.all(
             topRepos.map(async (repo) => {
-                const commitCount = await fetchCommitCount(repo.owner.login, repo.name);
+                const [totalCommits, userCommits] = await Promise.all([
+                    fetchCommitCount(repo.owner.login, repo.name),
+                    fetchCommitCount(repo.owner.login, repo.name, authLogin)
+                ]);
                 return {
                     id: repo.id.toString(),
                     name: repo.name,
                     owner: repo.owner.login,
+                    ownerAvatarUrl: repo.owner.avatar_url,
                     description: repo.description,
                     language: repo.language || 'Unknown',
                     stars: repo.stargazers_count,
                     forks: repo.forks_count,
-                    commits: commitCount,
+                    commits: totalCommits,
+                    userCommits,
                     isPrivate: repo.private,
-                    updatedAt: repo.updated_at
+                    updatedAt: repo.updated_at,
+                    isOwnedByUser: repo.owner.login.toLowerCase() === authLogin.toLowerCase()
                 };
             })
         );
+
+        // Sort: repos created by the authenticated user first, then org repos
+        enrichedRepos.sort((a, b) => {
+            if (a.isOwnedByUser && !b.isOwnedByUser) return -1;
+            if (!a.isOwnedByUser && b.isOwnedByUser) return 1;
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        });
 
         cache.set(cacheKey, { timestamp: Date.now(), data: enrichedRepos });
         return enrichedRepos;
@@ -68,8 +90,8 @@ export const fetchRepositories = async (username = 'octocat') => {
     }
 };
 
-export const fetchCommitCount = async (owner, repo) => {
-    const cacheKey = `commits_${owner}_${repo}`;
+export const fetchCommitCount = async (owner, repo, author = null) => {
+    const cacheKey = `commits_${owner}_${repo}${author ? `_${author}` : ''}`;
 
     if (cache.has(cacheKey)) {
         const cachedData = cache.get(cacheKey);
@@ -80,9 +102,10 @@ export const fetchCommitCount = async (owner, repo) => {
 
     try {
         const client = getGithubClient();
+        const authorParam = author ? `&author=${encodeURIComponent(author)}` : '';
         // Pagination trick to get total commits without fetching all payload pages
         // See: https://gist.github.com/0penBrain/7be59a48aba778c955d992aa69e524c5
-        const response = await client.get(`/repos/${owner}/${repo}/commits?per_page=1`, {
+        const response = await client.get(`/repos/${owner}/${repo}/commits?per_page=1${authorParam}`, {
             validateStatus: (status) => status < 500 // Resolve even on 409 (empty repo)
         });
 
