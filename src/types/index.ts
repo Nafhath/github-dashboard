@@ -10,6 +10,21 @@ export interface Repository {
     updatedAt: string;
 }
 
+export interface Contributor {
+    id: number;
+    login: string;
+    avatarUrl: string;
+    contributions: number;
+    htmlUrl: string;
+}
+
+export interface RepoDetails extends Repository {
+    owner: string;
+    htmlUrl: string;
+    contributors: Contributor[];
+    languages: Record<string, number>;
+}
+
 export interface Activity {
     id: string;
     type: 'commit' | 'branch' | 'issue' | 'pr';

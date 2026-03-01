@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, GripVertical, GitCommit } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
@@ -9,6 +10,7 @@ import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 
 export const Groups: React.FC = () => {
+    const navigate = useNavigate();
     const { data: groups, loading: groupsLoading, error: groupsErr } = useApi(api.getGroups);
     const { data: repos, loading: reposLoading, error: reposErr } = useApi(api.getRepositories);
     const [activeTab, setActiveTab] = useState('All Groups');
@@ -78,7 +80,7 @@ export const Groups: React.FC = () => {
                             {groupRepos.length > 0 ? (
                                 <>
                                     {groupRepos.map(repo => (
-                                        <Card key={repo.id} className="flex items-center justify-between py-3 px-4 group bg-slate-800/20 border-slate-700/50 backdrop-blur-none cursor-pointer hover:bg-slate-800/40 mb-2">
+                                        <Card key={repo.id} onClick={() => navigate(`/repo/mhmdn/${repo.name}`)} className="flex items-center justify-between py-3 px-4 group bg-slate-800/20 border-slate-700/50 backdrop-blur-none cursor-pointer hover:bg-slate-800/40 mb-2">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg>
@@ -90,7 +92,7 @@ export const Groups: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-8">
                                                 <span className="text-xs font-semibold text-primary flex items-center gap-1.5"><GitCommit size={14} /> {repo.commits} commits</span>
-                                                <Button variant="ghost" size="icon" className="w-8 h-8 text-slate-500 hover:text-white -mr-2 hover:bg-transparent" onClick={() => window.open(`https://github.com/mhmdn/${repo.name}`, '_blank')}>
+                                                <Button variant="ghost" size="icon" className="w-8 h-8 text-slate-500 hover:text-white -mr-2 hover:bg-transparent">
                                                     <GripVertical size={18} />
                                                 </Button>
                                             </div>

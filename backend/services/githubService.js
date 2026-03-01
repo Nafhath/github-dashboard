@@ -104,3 +104,56 @@ export const fetchCommitCount = async (owner, repo) => {
         return 0; // Graceful fallback
     }
 };
+
+export const fetchRepoDetails = async (owner, repo) => {
+    const cacheKey = `repo_details_${owner}_${repo}`;
+
+    if (cache.has(cacheKey)) {
+        const cachedData = cache.get(cacheKey);
+        if (Date.now() - cachedData.timestamp < CACHE_TTL) {
+            return cachedData.data;
+        }
+    }
+
+    try {
+        const client = getGithubClient();
+
+        // Fetch base repo info, contributors, and languages in parallel
+        const [repoRes, contribsRes, langsRes] = await Promise.all([
+            client.get(`/repos/${owner}/${repo}`),
+            client.get(`/repos/${owner}/${repo}/contributors?per_page=15`).catch(() => ({ data: [] })),
+            client.get(`/repos/${owner}/${repo}/languages`).catch(() => ({ data: {} }))
+        ]);
+
+        const repoData = repoRes.data;
+        const commitCount = await fetchCommitCount(owner, repo);
+
+        const details = {
+            id: repoData.id.toString(),
+            name: repoData.name,
+            owner: repoData.owner.login,
+            description: repoData.description,
+            language: repoData.language || 'Unknown',
+            stars: repoData.stargazers_count,
+            forks: repoData.forks_count,
+            commits: commitCount,
+            isPrivate: repoData.private,
+            updatedAt: repoData.updated_at,
+            htmlUrl: repoData.html_url,
+            contributors: contribsRes.data.map(c => ({
+                id: c.id,
+                login: c.login,
+                avatarUrl: c.avatar_url,
+                contributions: c.contributions,
+                htmlUrl: c.html_url
+            })),
+            languages: langsRes.data
+        };
+
+        cache.set(cacheKey, { timestamp: Date.now(), data: details });
+        return details;
+    } catch (error) {
+        console.error(`Error fetching repo details for ${owner}/${repo}:`, error.message);
+        throw new Error('Failed to fetch repository details from GitHub');
+    }
+};

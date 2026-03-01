@@ -1,10 +1,20 @@
-import { fetchRepositories } from '../services/githubService.js';
+import { fetchRepositories, fetchRepoDetails } from '../services/githubService.js';
 
 export const getRepos = async (req, res, next) => {
     try {
         const username = req.query.username || 'octocat'; // Configurable or default
         const repos = await fetchRepositories(username);
         res.json(repos);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getRepoDetails = async (req, res, next) => {
+    try {
+        const { owner, repo } = req.params;
+        const details = await fetchRepoDetails(owner, repo);
+        res.json(details);
     } catch (error) {
         next(error);
     }

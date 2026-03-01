@@ -57,7 +57,7 @@ export const Repositories: React.FC = () => {
             <div className="space-y-4 mt-6">
                 <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest pl-2">Recent Repositories</h2>
                 {repos.map(repo => (
-                    <Card key={repo.id} className="p-5 flex flex-col gap-3 group hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden">
+                    <Card key={repo.id} onClick={() => window.open(`/repo/mhmdn/${repo.name}`, '_self')} className="p-5 flex flex-col gap-3 group hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors pointer-events-none" />
                         <div className="flex items-start justify-between">
                             <div className="flex items-center gap-2">
