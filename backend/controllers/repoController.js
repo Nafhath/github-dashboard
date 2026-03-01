@@ -1,4 +1,4 @@
-import { fetchRepositories, fetchRepoDetails } from '../services/githubService.js';
+import { fetchRepositories, fetchRepoDetails, fetchRecentCommits } from '../services/githubService.js';
 
 export const getRepos = async (req, res, next) => {
     try {
@@ -15,6 +15,16 @@ export const getRepoDetails = async (req, res, next) => {
         const { owner, repo } = req.params;
         const details = await fetchRepoDetails(owner, repo);
         res.json(details);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getRecentCommits = async (req, res, next) => {
+    try {
+        const { owner, repo } = req.params;
+        const commits = await fetchRecentCommits(owner, repo);
+        res.json(commits);
     } catch (error) {
         next(error);
     }

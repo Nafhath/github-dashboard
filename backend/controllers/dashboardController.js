@@ -57,16 +57,17 @@ export const getDashboardStats = async (req, res, next) => {
         }
 
         const totalCommits = repos.reduce((sum, r) => sum + r.commits, 0);
-        // Sort repos descending by commit count, gracefully handle empty array
-        const sortedRepos = [...repos].sort((a, b) => b.commits - a.commits);
-        const mostActiveRepo = sortedRepos.length > 0 ? sortedRepos[0].name : 'None';
+        // Sort repos by most recently updated (latest push/commit)
+        const sortedByDate = [...repos].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        const mostRecentRepo = sortedByDate.length > 0 ? sortedByDate[0] : null;
 
         res.json({
             totalRepos: repos.length,
             totalCommits,
-            reposIncrease: 1, // Optional: Calculate from dates
-            commitsIncrease: 2, // Optional: Calculate from dates
-            mostActiveRepo,
+            reposIncrease: 1,
+            commitsIncrease: 2,
+            mostActiveRepo: mostRecentRepo?.name || 'None',
+            mostRecentRepoUpdatedAt: mostRecentRepo?.updatedAt || null,
             recentActivities: activities,
         });
     } catch (error) {

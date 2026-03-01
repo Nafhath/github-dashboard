@@ -157,3 +157,36 @@ export const fetchRepoDetails = async (owner, repo) => {
         throw new Error('Failed to fetch repository details from GitHub');
     }
 };
+
+export const fetchRecentCommits = async (owner, repo, perPage = 30) => {
+    const cacheKey = `commits_list_${owner}_${repo}`;
+
+    if (cache.has(cacheKey)) {
+        const cachedData = cache.get(cacheKey);
+        if (Date.now() - cachedData.timestamp < CACHE_TTL) {
+            return cachedData.data;
+        }
+    }
+
+    try {
+        const client = getGithubClient();
+        const response = await client.get(`/repos/${owner}/${repo}/commits?per_page=${perPage}`);
+
+        const commits = response.data.map(c => ({
+            sha: c.sha.substring(0, 7),
+            fullSha: c.sha,
+            message: c.commit.message.split('\n')[0], // First line only
+            author: c.commit.author.name,
+            authorLogin: c.author?.login || null,
+            authorAvatar: c.author?.avatar_url || null,
+            date: c.commit.author.date,
+            htmlUrl: c.html_url
+        }));
+
+        cache.set(cacheKey, { timestamp: Date.now(), data: commits });
+        return commits;
+    } catch (error) {
+        console.error(`Error fetching commits for ${owner}/${repo}:`, error.message);
+        throw new Error('Failed to fetch commits from GitHub');
+    }
+};

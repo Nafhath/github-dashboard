@@ -19,6 +19,11 @@ export const api = {
         return res.data;
     },
 
+    getRepoCommits: async (owner: string, repo: string) => {
+        const res = await axios.get(`${API_BASE_URL}/repos/${owner}/${repo}/commits`);
+        return res.data;
+    },
+
     getGroups: async (): Promise<Group[]> => {
         const res = await axios.get(`${API_BASE_URL}/groups`);
         return res.data;
