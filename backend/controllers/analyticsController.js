@@ -31,20 +31,23 @@ export const getAnalyticsStats = async (req, res, next) => {
                 color: colors[index % colors.length]
             }));
 
-        // Repo activity bar chart: top 5 by USER commit count (not total)
+        // Repo activity: only repos with user commits, sorted by user commit count
         const repoActivity = [...contributedRepos]
+            .filter(r => (r.userCommits || 0) > 0)
             .sort((a, b) => (b.userCommits || 0) - (a.userCommits || 0))
             .slice(0, 5)
             .map(r => ({ name: r.name, commits: r.userCommits || 0 }));
 
-        // Real commit timeline: fetch weekly stats for the most contributed repo
+        // Real commit timeline: use weekly participation data from the top repo
+        // 'all' = total commits per week by all contributors (includes user's commits)
         let commitTimeline = [];
         try {
-            const topRepo = repoActivity[0];
+            const topRepo = contributedRepos
+                .filter(r => (r.userCommits || 0) > 0)
+                .sort((a, b) => (b.userCommits || 0) - (a.userCommits || 0))[0];
             if (topRepo && process.env.GITHUB_TOKEN) {
-                const owner = contributedRepos.find(r => r.name === topRepo.name)?.owner || 'Nafhath';
                 const statsRes = await axios.get(
-                    `https://api.github.com/repos/${owner}/${topRepo.name}/stats/participation`,
+                    `https://api.github.com/repos/${topRepo.owner}/${topRepo.name}/stats/participation`,
                     {
                         headers: {
                             Accept: 'application/vnd.github.v3+json',
@@ -53,9 +56,9 @@ export const getAnalyticsStats = async (req, res, next) => {
                         validateStatus: s => s < 500
                     }
                 );
-                if (statsRes.status === 200 && statsRes.data?.owner) {
-                    // owner = commits by repo owner each week for last 52 weeks
-                    const weeks = statsRes.data.owner.slice(-8); // last 8 weeks
+                if (statsRes.status === 200 && Array.isArray(statsRes.data?.all)) {
+                    // 'all' = commits per week for last 52 weeks, take last 8
+                    const weeks = statsRes.data.all.slice(-8);
                     const now = new Date();
                     commitTimeline = weeks.map((commits, i) => {
                         const d = new Date(now);

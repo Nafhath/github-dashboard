@@ -56,6 +56,7 @@ export const Analytics: React.FC = () => {
 
                 {data.repoActivity && data.repoActivity.length > 0 && (() => {
                     const maxCommits = Math.max(...data.repoActivity.map((r: any) => r.commits), 1);
+
                     return (
                         <div className="mt-8">
                             <div className="flex items-end gap-2 h-20">
