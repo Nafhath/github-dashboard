@@ -53,15 +53,20 @@ export const fetchRepositories = async (username = 'octocat') => {
 
         const enrichedRepos = await Promise.all(
             topRepos.map(async (repo) => {
-                const [totalCommits, userCommits] = await Promise.all([
+                const [totalCommits, userCommits, topContributorRes] = await Promise.all([
                     fetchCommitCount(repo.owner.login, repo.name),
-                    fetchCommitCount(repo.owner.login, repo.name, authLogin)
+                    fetchCommitCount(repo.owner.login, repo.name, authLogin),
+                    client.get(`/repos/${repo.owner.login}/${repo.name}/contributors?per_page=1`)
+                        .catch(() => ({ data: [] }))
                 ]);
+                const topContributor = topContributorRes.data[0] || null;
                 return {
                     id: repo.id.toString(),
                     name: repo.name,
                     owner: repo.owner.login,
                     ownerAvatarUrl: repo.owner.avatar_url,
+                    creatorLogin: topContributor?.login || null,
+                    creatorAvatarUrl: topContributor?.avatar_url || null,
                     description: repo.description,
                     language: repo.language || 'Unknown',
                     stars: repo.stargazers_count,
@@ -110,6 +115,8 @@ export const fetchCommitCount = async (owner, repo, author = null) => {
         });
 
         if (response.status === 409) return 0; // Empty repository
+        // If data is empty array, the author has no commits in this repo
+        if (Array.isArray(response.data) && response.data.length === 0) return 0;
 
         let commitCount = 1;
         if (response.headers.link) {

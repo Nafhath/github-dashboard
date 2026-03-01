@@ -3,6 +3,8 @@ export interface Repository {
     name: string;
     owner: string;
     ownerAvatarUrl: string;
+    creatorLogin: string | null;
+    creatorAvatarUrl: string | null;
     description: string;
     language: string;
     stars: number;

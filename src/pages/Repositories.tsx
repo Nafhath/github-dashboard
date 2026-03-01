@@ -76,18 +76,27 @@ export const Repositories: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* Owner avatar in top-right corner */}
-                            <div className="shrink-0 relative" title={repo.owner}>
-                                {repo.ownerAvatarUrl ? (
+                            {/* Creator avatar (top contributor) + org badge for org repos */}
+                            <div className="shrink-0 relative" title={repo.creatorLogin || repo.owner}>
+                                {repo.creatorAvatarUrl ? (
+                                    <img
+                                        src={repo.creatorAvatarUrl}
+                                        alt={repo.creatorLogin || repo.owner}
+                                        className="w-9 h-9 rounded-full border-2 border-slate-700 group-hover:border-primary/50 transition-colors shadow-md object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
+                                        <User size={14} className="text-slate-400" />
+                                    </div>
+                                )}
+                                {/* Org logo as small badge overlay for org repos */}
+                                {!repo.isOwnedByUser && repo.ownerAvatarUrl && (
                                     <img
                                         src={repo.ownerAvatarUrl}
                                         alt={repo.owner}
-                                        className="w-8 h-8 rounded-full border-2 border-slate-700 group-hover:border-primary/50 transition-colors shadow-md object-cover"
+                                        title={repo.owner}
+                                        className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border border-slate-900 object-cover"
                                     />
-                                ) : (
-                                    <div className="w-8 h-8 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
-                                        <User size={14} className="text-slate-400" />
-                                    </div>
                                 )}
                             </div>
                         </div>
