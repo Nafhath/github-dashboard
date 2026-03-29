@@ -10,9 +10,14 @@ export const getDashboardStats = async (req, res, next) => {
         const contributedRepos = repos.filter(r => r.userCommits > 0);
         const totalUserCommits = repos.reduce((sum, r) => sum + (r.userCommits || 0), 0);
 
-        // Most recently updated among contributed repos
-        const sortedByDate = [...contributedRepos].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        const mostRecentRepo = sortedByDate.length > 0 ? sortedByDate[0] : (repos[0] || null);
+        // Most active = repo with the most user commits, using recency as a tiebreaker.
+        const mostActiveRepo = [...contributedRepos].sort((a, b) => {
+            if ((b.userCommits || 0) !== (a.userCommits || 0)) {
+                return (b.userCommits || 0) - (a.userCommits || 0);
+            }
+
+            return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        })[0] || repos[0] || null;
 
         // Real activity from GitHub: use authenticated events (includes private) or public events
         let activities = [];
@@ -94,8 +99,8 @@ export const getDashboardStats = async (req, res, next) => {
 
         // Relative last active time from most recent repo
         const lastActiveRelative = (() => {
-            if (!mostRecentRepo?.updatedAt) return 'Unknown';
-            const diffMs = Date.now() - new Date(mostRecentRepo.updatedAt).getTime();
+            if (!mostActiveRepo?.updatedAt) return 'Unknown';
+            const diffMs = Date.now() - new Date(mostActiveRepo.updatedAt).getTime();
             const mins = Math.floor(diffMs / 60000);
             const hrs = Math.floor(diffMs / 3600000);
             const days = Math.floor(diffMs / 86400000);
@@ -109,9 +114,10 @@ export const getDashboardStats = async (req, res, next) => {
             totalCommits: totalUserCommits,
             reposIncrease: 1,
             commitsIncrease: 2,
-            mostActiveRepo: mostRecentRepo?.name || 'None',
-            mostActiveRepoOwner: mostRecentRepo?.owner || 'Nafhath',
-            mostRecentRepoUpdatedAt: mostRecentRepo?.updatedAt || null,
+            mostActiveRepo: mostActiveRepo?.name || 'None',
+            mostActiveRepoOwner: mostActiveRepo?.owner || 'Nafhath',
+            mostActiveRepoCommits: mostActiveRepo?.userCommits || 0,
+            mostRecentRepoUpdatedAt: mostActiveRepo?.updatedAt || null,
             lastActiveRelative,
             recentActivities: activities,
         });

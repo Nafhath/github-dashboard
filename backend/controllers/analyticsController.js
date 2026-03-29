@@ -1,4 +1,4 @@
-import { fetchRepositories } from '../services/githubService.js';
+import { fetchRepositories, resolveGithubLogin } from '../services/githubService.js';
 import axios from 'axios';
 
 export const getAnalyticsStats = async (req, res, next) => {
@@ -39,15 +39,16 @@ export const getAnalyticsStats = async (req, res, next) => {
             .map(r => ({ name: r.name, commits: r.userCommits || 0 }));
 
         // Real commit timeline: use weekly participation data from the top repo
-        // 'all' = total commits per week by all contributors (includes user's commits)
+        // Use the selected user's weekly contribution totals so the chart matches the rest of the page.
         let commitTimeline = [];
         try {
             const topRepo = contributedRepos
                 .filter(r => (r.userCommits || 0) > 0)
                 .sort((a, b) => (b.userCommits || 0) - (a.userCommits || 0))[0];
             if (topRepo && process.env.GITHUB_TOKEN) {
+                const targetLogin = await resolveGithubLogin(username);
                 const statsRes = await axios.get(
-                    `https://api.github.com/repos/${topRepo.owner}/${topRepo.name}/stats/participation`,
+                    `https://api.github.com/repos/${topRepo.owner}/${topRepo.name}/stats/contributors`,
                     {
                         headers: {
                             Accept: 'application/vnd.github.v3+json',
@@ -56,16 +57,18 @@ export const getAnalyticsStats = async (req, res, next) => {
                         validateStatus: s => s < 500
                     }
                 );
-                if (statsRes.status === 200 && Array.isArray(statsRes.data?.all)) {
-                    // 'all' = commits per week for last 52 weeks, take last 8
-                    const weeks = statsRes.data.all.slice(-8);
+                if (statsRes.status === 200 && Array.isArray(statsRes.data)) {
+                    const contributor = statsRes.data.find((entry) =>
+                        entry.author?.login?.toLowerCase() === targetLogin.toLowerCase()
+                    );
+                    const weeks = contributor?.weeks?.slice(-8) || [];
                     const now = new Date();
-                    commitTimeline = weeks.map((commits, i) => {
+                    commitTimeline = weeks.map((week, i) => {
                         const d = new Date(now);
                         d.setDate(d.getDate() - (7 * (7 - i)));
                         return {
                             date: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-                            commits
+                            commits: week.c
                         };
                     });
                 }

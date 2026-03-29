@@ -105,7 +105,7 @@ export const Dashboard: React.FC = () => {
                         <div className="flex items-end justify-between">
                             <div>
                                 <p className="text-slate-400 text-sm">Last active {data.lastActiveRelative || 'recently'}</p>
-                                <p className="text-secondary font-medium text-sm mt-1">{data.totalCommits} of your commits</p>
+                                <p className="text-secondary font-medium text-sm mt-1">{data.mostActiveRepoCommits || 0} of your commits</p>
                             </div>
                             <Button
                                 className="shadow-[0_0_20px_rgba(14,165,233,0.3)]"

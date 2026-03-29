@@ -1,10 +1,18 @@
 import Group from '../models/Group.js';
-import { fetchCommitCount } from '../services/githubService.js';
+import { fetchCommitCount, fetchRepositories } from '../services/githubService.js';
 
 export const getGroups = async (req, res, next) => {
     try {
         const username = req.query.username || 'octocat';
         const groups = await Group.find().sort({ createdAt: -1 });
+        const repos = await fetchRepositories(username);
+        const repoByIdOrName = new Map();
+
+        repos.forEach((repo) => {
+            repoByIdOrName.set(repo.id, repo);
+            repoByIdOrName.set(repo.name, repo);
+            repoByIdOrName.set(`${repo.owner}/${repo.name}`, repo);
+        });
 
         // Enrich groups with total commits
         const enrichedGroups = await Promise.all(
@@ -13,7 +21,15 @@ export const getGroups = async (req, res, next) => {
 
                 // Sum commits for all repos in this group
                 if (group.repos && group.repos.length > 0) {
-                    const commitPromises = group.repos.map(repoName => fetchCommitCount(username, repoName));
+                    const commitPromises = group.repos.map((repoRef) => {
+                        const matchedRepo = repoByIdOrName.get(repoRef);
+
+                        if (!matchedRepo) {
+                            return 0;
+                        }
+
+                        return fetchCommitCount(matchedRepo.owner, matchedRepo.name);
+                    });
                     const commitCounts = await Promise.all(commitPromises);
                     totalCommits = commitCounts.reduce((sum, count) => sum + count, 0);
                 }

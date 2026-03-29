@@ -6,6 +6,10 @@ import { getAnalyticsStats } from '../controllers/analyticsController.js';
 
 const router = express.Router();
 
+router.get('/health', (_req, res) => {
+    res.json({ status: 'ok' });
+});
+
 router.get('/repos', getRepos);
 router.get('/repos/:owner/:repo/commits', getRecentCommits);
 router.get('/repos/:owner/:repo', getRepoDetails);

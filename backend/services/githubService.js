@@ -96,6 +96,21 @@ export const fetchRepositories = async (username = 'octocat') => {
     }
 };
 
+export const resolveGithubLogin = async (username = 'octocat') => {
+    if (!(process.env.GITHUB_TOKEN && username === 'octocat')) {
+        return username;
+    }
+
+    try {
+        const client = getGithubClient();
+        const meRes = await client.get('/user');
+        return meRes.data.login || username;
+    } catch (error) {
+        console.error('Failed to resolve authenticated GitHub login:', error.message);
+        return username;
+    }
+};
+
 export const fetchCommitCount = async (owner, repo, author = null) => {
     const cacheKey = `commits_${owner}_${repo}${author ? `_${author}` : ''}`;
 
@@ -198,6 +213,9 @@ export const fetchRepoDetails = async (owner, repo) => {
         return details;
     } catch (error) {
         console.error(`Error fetching repo details for ${owner}/${repo}:`, error.message);
+        if (error.statusCode) {
+            throw error;
+        }
         throw new Error('Failed to fetch repository details from GitHub');
     }
 };

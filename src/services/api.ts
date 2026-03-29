@@ -1,9 +1,16 @@
 import axios from 'axios';
 import type { Repository, Group } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://github-dashboard-ugo8.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://github-dashboard-ugo8.onrender.com/api';
 
 export const api = {
+    pingBackend: async () => {
+        const res = await axios.get(`${API_BASE_URL}/health`, {
+            timeout: 10000,
+        });
+        return res.data;
+    },
+
     getDashboardStats: async () => {
         const res = await axios.get(`${API_BASE_URL}/dashboard`);
         return res.data;
