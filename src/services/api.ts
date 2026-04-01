@@ -46,6 +46,10 @@ export const api = {
         return res.data;
     },
 
+    deleteGroup: async (id: string) => {
+        await axios.delete(`${API_BASE_URL}/groups/${id}`);
+    },
+
     getAnalytics: async () => {
         const res = await axios.get(`${API_BASE_URL}/analytics`);
         return res.data;

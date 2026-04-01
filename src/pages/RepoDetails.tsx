@@ -27,10 +27,16 @@ export const RepoDetails: React.FC = () => {
     const navigate = useNavigate();
     const [activePanel, setActivePanel] = useState<PanelType>(null);
 
-    const { data: repo, loading, error } = useApi(() => api.getRepoDetails(owner!, repoName!), { deps: [owner, repoName] });
+    const { data: repo, loading, error, isCachedData } = useApi(() => api.getRepoDetails(owner!, repoName!), {
+        deps: [owner, repoName],
+        cacheKey: `repo:${owner}:${repoName}:details`
+    });
     const { data: commits, loading: commitsLoading } = useApi(
         () => api.getRepoCommits(owner!, repoName!),
-        { deps: [owner, repoName] }
+        {
+            deps: [owner, repoName],
+            cacheKey: `repo:${owner}:${repoName}:commits`
+        }
     );
 
     if (loading) return <div className="flex h-[80vh] items-center justify-center"><Spinner size={50} /></div>;
@@ -78,6 +84,9 @@ export const RepoDetails: React.FC = () => {
                         </Badge>
                     </div>
                     <p className="text-slate-400 text-lg leading-relaxed max-w-3xl">{repo.description}</p>
+                    {isCachedData && (
+                        <p className="text-xs text-sky-300 mt-2">Showing cached repository details while the backend reconnects.</p>
+                    )}
                 </div>
                 <Button
                     variant="primary"

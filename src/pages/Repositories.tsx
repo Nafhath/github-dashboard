@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, GitFork, GitCommit, Lock, User } from 'lucide-react';
+import { Star, GitFork, GitCommit, Lock, User, ArrowUpDown } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
@@ -9,12 +9,23 @@ import { Button } from '../components/ui/Button';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import type { Repository } from '../types';
+import { useToast } from '../context/ToastContext';
 
 export const Repositories: React.FC = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const { data: repos, loading, error, isCachedData } = useApi(api.getRepositories, { cacheKey: 'repositories' });
-    const [activeFilter, setActiveFilter] = useState('All Repos');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState(() => window.localStorage.getItem('repos:filter') || 'All Repos');
+    const [searchQuery, setSearchQuery] = useState(() => window.localStorage.getItem('repos:search') || '');
+    const [sortBy, setSortBy] = useState(() => window.localStorage.getItem('repos:sort') || 'Recently Updated');
+    const [favorites, setFavorites] = useState<string[]>(() => {
+        try {
+            const stored = window.localStorage.getItem('repos:favorites');
+            return stored ? JSON.parse(stored) as string[] : [];
+        } catch {
+            return [];
+        }
+    });
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
     if (!repos) return <div className="text-red-400">Failed to load repositories: {error}</div>;
@@ -38,7 +49,46 @@ export const Repositories: React.FC = () => {
             || (activeFilter === 'Active' && repo.userCommits > 0);
 
         return matchesQuery && matchesFilter;
+    }).sort((left, right) => {
+        const leftFav = favorites.includes(left.id) ? 1 : 0;
+        const rightFav = favorites.includes(right.id) ? 1 : 0;
+
+        if (leftFav !== rightFav) {
+            return rightFav - leftFav;
+        }
+
+        switch (sortBy) {
+            case 'Stars':
+                return right.stars - left.stars;
+            case 'Your Commits':
+                return right.userCommits - left.userCommits;
+            case 'Total Commits':
+                return right.commits - left.commits;
+            case 'Name':
+                return left.name.localeCompare(right.name);
+            default:
+                return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+        }
     });
+
+    const persistValue = (key: string, value: string) => {
+        window.localStorage.setItem(key, value);
+    };
+
+    const toggleFavorite = (repoId: string, repoName: string) => {
+        setFavorites((current) => {
+            const next = current.includes(repoId)
+                ? current.filter((id) => id !== repoId)
+                : [...current, repoId];
+
+            window.localStorage.setItem('repos:favorites', JSON.stringify(next));
+            showToast(
+                next.includes(repoId) ? `${repoName} added to favorites` : `${repoName} removed from favorites`,
+                'success'
+            );
+            return next;
+        });
+    };
 
     const getDotColor = (lang: string) => {
         switch (lang) {
@@ -65,21 +115,42 @@ export const Repositories: React.FC = () => {
                 <Input
                     icon
                     value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onChange={(event) => {
+                        setSearchQuery(event.target.value);
+                        persistValue('repos:search', event.target.value);
+                    }}
                     placeholder="Search by repo, owner, language, or description..."
                     className="bg-slate-900/40"
                 />
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                <div className="flex flex-wrap gap-2 overflow-x-auto pb-2 scrollbar-none">
                     {filters.map(filter => (
                         <Badge
                             key={filter}
                             variant={activeFilter === filter ? 'primary' : 'outline'}
                             className="px-4 py-1.5 cursor-pointer hover:bg-slate-800 transition-colors whitespace-nowrap"
-                            onClick={() => setActiveFilter(filter)}
+                            onClick={() => {
+                                setActiveFilter(filter);
+                                persistValue('repos:filter', filter);
+                            }}
                         >
                             {filter}
                         </Badge>
                     ))}
+                    <div className="ml-auto flex items-center gap-2 text-xs text-slate-400">
+                        <ArrowUpDown size={14} />
+                        <select
+                            className="bg-slate-900/70 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-200"
+                            value={sortBy}
+                            onChange={(event) => {
+                                setSortBy(event.target.value);
+                                persistValue('repos:sort', event.target.value);
+                            }}
+                        >
+                            {['Recently Updated', 'Stars', 'Your Commits', 'Total Commits', 'Name'].map((option) => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -107,26 +178,39 @@ export const Repositories: React.FC = () => {
                                 )}
                             </div>
 
-                            <div className="shrink-0 relative" title={repo.creatorLogin || repo.owner}>
-                                {repo.creatorAvatarUrl ? (
-                                    <img
-                                        src={repo.creatorAvatarUrl}
-                                        alt={repo.creatorLogin || repo.owner}
-                                        className="w-9 h-9 rounded-full border-2 border-slate-700 group-hover:border-primary/50 transition-colors shadow-md object-cover"
-                                    />
-                                ) : (
-                                    <div className="w-9 h-9 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
-                                        <User size={14} className="text-slate-400" />
-                                    </div>
-                                )}
-                                {!repo.isOwnedByUser && repo.ownerAvatarUrl && (
-                                    <img
-                                        src={repo.ownerAvatarUrl}
-                                        alt={repo.owner}
-                                        title={repo.owner}
-                                        className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border border-slate-900 object-cover"
-                                    />
-                                )}
+                            <div className="shrink-0 flex items-start gap-2">
+                                <button
+                                    type="button"
+                                    className={`mt-1 rounded-full p-1.5 border transition-colors ${favorites.includes(repo.id) ? 'border-amber-400/40 bg-amber-400/10 text-amber-300' : 'border-slate-700 bg-slate-900/60 text-slate-500 hover:text-amber-300'}`}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        toggleFavorite(repo.id, repo.name);
+                                    }}
+                                    aria-label={favorites.includes(repo.id) ? 'Remove from favorites' : 'Add to favorites'}
+                                >
+                                    <Star size={14} className={favorites.includes(repo.id) ? 'fill-current' : ''} />
+                                </button>
+                                <div className="relative" title={repo.creatorLogin || repo.owner}>
+                                    {repo.creatorAvatarUrl ? (
+                                        <img
+                                            src={repo.creatorAvatarUrl}
+                                            alt={repo.creatorLogin || repo.owner}
+                                            className="w-9 h-9 rounded-full border-2 border-slate-700 group-hover:border-primary/50 transition-colors shadow-md object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-9 h-9 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
+                                            <User size={14} className="text-slate-400" />
+                                        </div>
+                                    )}
+                                    {!repo.isOwnedByUser && repo.ownerAvatarUrl && (
+                                        <img
+                                            src={repo.ownerAvatarUrl}
+                                            alt={repo.owner}
+                                            title={repo.owner}
+                                            className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border border-slate-900 object-cover"
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </div>
 

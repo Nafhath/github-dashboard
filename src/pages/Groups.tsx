@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, GitCommit, X } from 'lucide-react';
+import { Plus, GitCommit, X, Pencil, Trash2, FolderOpen } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
@@ -9,11 +9,13 @@ import { Spinner } from '../components/ui/Spinner';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import type { Group, Repository } from '../types';
+import { useToast } from '../context/ToastContext';
 
 const getRepoFullName = (repo: Repository) => `${repo.owner}/${repo.name}`;
 
 export const Groups: React.FC = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const { data: groups, loading: groupsLoading, error: groupsErr, refetch: refetchGroups, isCachedData: groupsCached } = useApi(api.getGroups, { cacheKey: 'groups' });
     const { data: repos, loading: reposLoading, error: reposErr, isCachedData: reposCached } = useApi(api.getRepositories, { cacheKey: 'repositories' });
     const [activeTab, setActiveTab] = useState('All Groups');
@@ -76,8 +78,9 @@ export const Groups: React.FC = () => {
         try {
             await api.updateGroup(group.id, { repos: nextRepoIds });
             refetchGroups();
+            showToast(`${group.name} updated`, 'success');
         } catch {
-            window.alert('Failed to update the group. Please try again.');
+            showToast('Failed to update the group. Please try again.', 'error');
         } finally {
             setBusyGroupId(null);
         }
@@ -96,8 +99,49 @@ export const Groups: React.FC = () => {
         try {
             await api.createGroup(name.trim(), '', []);
             refetchGroups();
+            showToast(`${name.trim()} created`, 'success');
         } catch {
-            window.alert('Failed to create group');
+            showToast('Failed to create group', 'error');
+        }
+    };
+
+    const handleEditGroup = async (group: Group) => {
+        const name = window.prompt('Update group name:', group.name);
+
+        if (!name?.trim()) {
+            return;
+        }
+
+        const description = window.prompt('Update group description:', group.description || '') ?? group.description ?? '';
+
+        setBusyGroupId(group.id);
+        try {
+            await api.updateGroup(group.id, { name: name.trim(), description });
+            refetchGroups();
+            showToast(`${name.trim()} saved`, 'success');
+        } catch {
+            showToast('Failed to save group changes', 'error');
+        } finally {
+            setBusyGroupId(null);
+        }
+    };
+
+    const handleDeleteGroup = async (group: Group) => {
+        const confirmed = window.confirm(`Delete "${group.name}"?`);
+
+        if (!confirmed) {
+            return;
+        }
+
+        setBusyGroupId(group.id);
+        try {
+            await api.deleteGroup(group.id);
+            refetchGroups();
+            showToast(`${group.name} deleted`, 'success');
+        } catch {
+            showToast('Failed to delete the group', 'error');
+        } finally {
+            setBusyGroupId(null);
         }
     };
 
@@ -118,6 +162,10 @@ export const Groups: React.FC = () => {
 
         return matchesTab && matchesQuery;
     });
+
+    const totalAssignedRepos = groups.reduce((sum, group) => sum + getGroupRepos(group).length, 0);
+    const mostActiveGroup = [...groups]
+        .sort((left, right) => right.totalCommits - left.totalCommits)[0];
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto">
@@ -158,6 +206,22 @@ export const Groups: React.FC = () => {
                 </Card>
             )}
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Groups</p>
+                    <p className="text-3xl font-black text-white mt-2">{groups.length}</p>
+                </Card>
+                <Card className="p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Assigned Repositories</p>
+                    <p className="text-3xl font-black text-white mt-2">{totalAssignedRepos}</p>
+                </Card>
+                <Card className="p-5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Most Active Group</p>
+                    <p className="text-lg font-bold text-white mt-2">{mostActiveGroup?.name || 'None yet'}</p>
+                    <p className="text-sm text-slate-400 mt-1">{mostActiveGroup?.totalCommits || 0} commits</p>
+                </Card>
+            </div>
+
             <div className="space-y-8 mt-8">
                 {filteredGroups.length > 0 ? filteredGroups.map((group) => {
                     const groupRepos = getGroupRepos(group);
@@ -178,9 +242,29 @@ export const Groups: React.FC = () => {
                                         </Badge>
                                     )}
                                 </div>
-                                <Badge variant="outline" className="text-xs text-primary font-medium border-primary/20 bg-primary/10 px-2 py-0.5">
-                                    {group.totalCommits >= 1000 ? `${(group.totalCommits / 1000).toFixed(1)}k Commits` : `${group.totalCommits} Commits`}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs text-primary font-medium border-primary/20 bg-primary/10 px-2 py-0.5">
+                                        {group.totalCommits >= 1000 ? `${(group.totalCommits / 1000).toFixed(1)}k Commits` : `${group.totalCommits} Commits`}
+                                    </Badge>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="w-8 h-8"
+                                        onClick={() => handleEditGroup(group)}
+                                        disabled={busyGroupId === group.id}
+                                    >
+                                        <Pencil size={15} />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="w-8 h-8 text-rose-300 hover:text-rose-200"
+                                        onClick={() => handleDeleteGroup(group)}
+                                        disabled={busyGroupId === group.id}
+                                    >
+                                        <Trash2 size={15} />
+                                    </Button>
+                                </div>
                             </div>
 
                             {groupRepos.length > 0 ? (
@@ -215,9 +299,7 @@ export const Groups: React.FC = () => {
                                 ))
                             ) : (
                                 <Card className="flex flex-col items-center justify-center p-8 bg-slate-900/30 border-slate-800/50 shadow-inner">
-                                    <div className="text-primary/70 mb-3">
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>
-                                    </div>
+                                    <FolderOpen size={30} className="text-primary/70 mb-3" />
                                     <p className="text-slate-400 text-sm font-medium mb-1.5">No repositories in this group yet.</p>
                                 </Card>
                             )}

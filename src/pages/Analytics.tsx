@@ -8,13 +8,21 @@ import { useApi } from '../hooks/useApi';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const Analytics: React.FC = () => {
-    const { data, loading, error, isCachedData } = useApi(api.getAnalytics, { cacheKey: 'analytics' });
+    const { data, loading, error, isCachedData, lastSyncedAt } = useApi(api.getAnalytics, { cacheKey: 'analytics' });
     const [activeTab, setActiveTab] = useState('Overview');
+    const [timelineWindow, setTimelineWindow] = useState<'4' | '8'>('8');
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
     if (!data) return <div className="text-red-400">Failed to load analytics: {error}</div>;
 
     const tabs = ['Overview', 'Repositories', 'Languages'];
+    const visibleTimeline = timelineWindow === '4' ? data.commitTimeline.slice(-4) : data.commitTimeline;
+    const lastSyncedLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+    }) : 'Just now';
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-5xl mx-auto">
@@ -26,6 +34,7 @@ export const Analytics: React.FC = () => {
                     <h1 className="text-xl font-bold flex items-center gap-3 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
                         Activity Analytics
                     </h1>
+                    <span className="text-xs text-slate-500">Last synced {lastSyncedLabel}</span>
                 </div>
                 <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
                     <Share2 size={20} />
@@ -131,11 +140,21 @@ export const Analytics: React.FC = () => {
             <Card className="p-6 mb-8">
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-sm font-bold text-white">Commit Activity</h2>
-                    <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg tracking-wide uppercase">Last 30 Days</span>
+                    <div className="flex items-center gap-2">
+                        {(['4', '8'] as const).map((option) => (
+                            <button
+                                key={option}
+                                className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg tracking-wide uppercase border ${timelineWindow === option ? 'text-primary bg-primary/10 border-primary/20' : 'text-slate-400 border-slate-700'}`}
+                                onClick={() => setTimelineWindow(option)}
+                            >
+                                Last {option} weeks
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="h-48 w-full -ml-4 pl-4 pt-2">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data.commitTimeline} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                        <AreaChart data={visibleTimeline} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorCommits" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />

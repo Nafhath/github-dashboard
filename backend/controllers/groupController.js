@@ -125,3 +125,18 @@ export const updateGroup = async (req, res, next) => {
         next(error);
     }
 };
+
+export const deleteGroup = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const deletedGroup = await Group.findByIdAndDelete(id);
+
+        if (!deletedGroup) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+};

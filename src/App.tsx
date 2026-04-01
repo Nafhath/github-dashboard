@@ -10,6 +10,8 @@ import { Spinner } from './components/ui/Spinner';
 import { Button } from './components/ui/Button';
 import { api } from './services/api';
 import { getCachedApiValue } from './hooks/useApi';
+import { AppShellProvider, type BackendStatus } from './context/AppShellContext';
+import { ToastProvider } from './context/ToastContext';
 
 type BootState = 'booting' | 'ready' | 'error';
 
@@ -86,6 +88,7 @@ function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const [bootAttempt, setBootAttempt] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [backendStatus, setBackendStatus] = useState<BackendStatus>('connecting');
 
   useEffect(() => {
     if (bootState === 'ready') {
@@ -115,6 +118,7 @@ function App() {
         if (!cancelled) {
           setBootError(null);
           setBootState('ready');
+          setBackendStatus('online');
         }
       } catch (error) {
         if (cancelled) {
@@ -124,10 +128,12 @@ function App() {
         if (getCachedApiValue('dashboard')) {
           setBootState('ready');
           setBootError(null);
+          setBackendStatus('offline');
           return;
         }
 
         setBootState('booting');
+        setBackendStatus('connecting');
         setBootError('Still waiting for the backend to wake up. This usually resolves on its own.');
         retryTimeout = window.setTimeout(pollBackend, 3000);
       }
@@ -136,6 +142,7 @@ function App() {
     setElapsedSeconds(0);
     setBootError(null);
     setBootState('booting');
+    setBackendStatus('connecting');
     pollBackend();
 
     return () => {
@@ -145,6 +152,33 @@ function App() {
       }
     };
   }, [bootAttempt]);
+
+  useEffect(() => {
+    if (bootState !== 'ready' || backendStatus === 'online') {
+      return;
+    }
+
+    let cancelled = false;
+
+    const interval = window.setInterval(async () => {
+      try {
+        await api.pingBackend();
+
+        if (!cancelled) {
+          setBackendStatus('online');
+        }
+      } catch {
+        if (!cancelled) {
+          setBackendStatus('offline');
+        }
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [backendStatus, bootState]);
 
   if (bootState !== 'ready') {
     return (
@@ -160,17 +194,21 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<AppLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="repos" element={<Repositories />} />
-          <Route path="repo/:owner/:repoName" element={<RepoDetails />} />
-          <Route path="groups" element={<Groups />} />
-          <Route path="analytics" element={<Analytics />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AppShellProvider backendStatus={backendStatus}>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<AppLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="repos" element={<Repositories />} />
+              <Route path="repo/:owner/:repoName" element={<RepoDetails />} />
+              <Route path="groups" element={<Groups />} />
+              <Route path="analytics" element={<Analytics />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </AppShellProvider>
   );
 }
 

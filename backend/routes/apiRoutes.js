@@ -1,6 +1,6 @@
 import express from 'express';
 import { getRepos, getRepoDetails, getRecentCommits } from '../controllers/repoController.js';
-import { getGroups, createGroup, updateGroup } from '../controllers/groupController.js';
+import { getGroups, createGroup, updateGroup, deleteGroup } from '../controllers/groupController.js';
 import { getDashboardStats } from '../controllers/dashboardController.js';
 import { getAnalyticsStats } from '../controllers/analyticsController.js';
 
@@ -16,6 +16,7 @@ router.get('/repos/:owner/:repo', getRepoDetails);
 router.get('/groups', getGroups);
 router.post('/groups', createGroup);
 router.put('/groups/:id', updateGroup);
+router.delete('/groups/:id', deleteGroup);
 router.get('/dashboard', getDashboardStats);
 
 router.get('/analytics', getAnalyticsStats);

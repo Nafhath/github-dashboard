@@ -11,10 +11,17 @@ import type { Activity } from '../types';
 
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
-    const { data, loading, error, isCachedData } = useApi(api.getDashboardStats, { cacheKey: 'dashboard' });
+    const { data, loading, error, isCachedData, lastSyncedAt } = useApi(api.getDashboardStats, { cacheKey: 'dashboard' });
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
     if (!data) return <div className="text-red-400">Failed to load dashboard: {error}</div>;
+
+    const lastSyncedLabel = lastSyncedAt ? new Date(lastSyncedAt).toLocaleString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+    }) : 'Just now';
 
     const getActivityIcon = (type: string) => {
         switch (type) {
@@ -38,6 +45,7 @@ export const Dashboard: React.FC = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
                         <p className="text-slate-400 text-sm">Welcome back, Nafhath</p>
+                        <p className="text-slate-500 text-xs mt-1">Last synced {lastSyncedLabel}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
