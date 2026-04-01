@@ -8,11 +8,11 @@ import { useApi } from '../hooks/useApi';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const Analytics: React.FC = () => {
-    const { data, loading, error } = useApi(api.getAnalytics);
+    const { data, loading, error, isCachedData } = useApi(api.getAnalytics, { cacheKey: 'analytics' });
     const [activeTab, setActiveTab] = useState('Overview');
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
-    if (error || !data) return <div className="text-red-400">Failed to load analytics: {error}</div>;
+    if (!data) return <div className="text-red-400">Failed to load analytics: {error}</div>;
 
     const tabs = ['Overview', 'Repositories', 'Languages'];
 
@@ -44,6 +44,12 @@ export const Analytics: React.FC = () => {
                     </button>
                 ))}
             </div>
+
+            {(isCachedData || error) && (
+                <Card className="p-4 text-sm text-sky-100 border-sky-500/20 bg-sky-500/10">
+                    Showing cached analytics while the backend reconnects.
+                </Card>
+            )}
 
             <Card className="p-6 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />

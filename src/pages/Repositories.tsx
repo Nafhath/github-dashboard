@@ -12,13 +12,33 @@ import type { Repository } from '../types';
 
 export const Repositories: React.FC = () => {
     const navigate = useNavigate();
-    const { data: repos, loading, error } = useApi(api.getRepositories);
+    const { data: repos, loading, error, isCachedData } = useApi(api.getRepositories, { cacheKey: 'repositories' });
     const [activeFilter, setActiveFilter] = useState('All Repos');
+    const [searchQuery, setSearchQuery] = useState('');
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
-    if (error || !repos) return <div className="text-red-400">Failed to load repositories: {error}</div>;
+    if (!repos) return <div className="text-red-400">Failed to load repositories: {error}</div>;
 
-    const filters = ['All Repos', 'Active', 'Language', 'Private'];
+    const filters = ['All Repos', 'Mine', 'Shared', 'Private', 'Active'];
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    const filteredRepos = repos.filter((repo: Repository) => {
+        const matchesQuery = !normalizedQuery || [
+            repo.name,
+            repo.owner,
+            repo.language,
+            repo.description,
+            repo.creatorLogin
+        ].some((value) => value?.toLowerCase().includes(normalizedQuery));
+
+        const matchesFilter = activeFilter === 'All Repos'
+            || (activeFilter === 'Mine' && repo.isOwnedByUser)
+            || (activeFilter === 'Shared' && !repo.isOwnedByUser)
+            || (activeFilter === 'Private' && repo.isPrivate)
+            || (activeFilter === 'Active' && repo.userCommits > 0);
+
+        return matchesQuery && matchesFilter;
+    });
 
     const getDotColor = (lang: string) => {
         switch (lang) {
@@ -42,7 +62,13 @@ export const Repositories: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-                <Input icon placeholder="Search repositories..." className="bg-slate-900/40" />
+                <Input
+                    icon
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by repo, owner, language, or description..."
+                    className="bg-slate-900/40"
+                />
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                     {filters.map(filter => (
                         <Badge
@@ -51,17 +77,22 @@ export const Repositories: React.FC = () => {
                             className="px-4 py-1.5 cursor-pointer hover:bg-slate-800 transition-colors whitespace-nowrap"
                             onClick={() => setActiveFilter(filter)}
                         >
-                            {filter} {filter !== 'All Repos' && <span className="ml-1 opacity-50 text-[10px]">▼</span>}
+                            {filter}
                         </Badge>
                     ))}
                 </div>
             </div>
 
             <div className="space-y-4 mt-6">
+                {(isCachedData || error) && (
+                    <Card className="p-4 text-sm text-sky-100 border-sky-500/20 bg-sky-500/10">
+                        Showing cached repositories while the backend reconnects.
+                    </Card>
+                )}
                 <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest pl-2">
-                    {repos.filter((r: Repository) => r.isOwnedByUser).length > 0 ? 'Your Repositories First' : 'Recent Repositories'}
+                    {filteredRepos.length} repository{filteredRepos.length === 1 ? '' : 'ies'} shown
                 </h2>
-                {repos.map((repo: Repository) => (
+                {filteredRepos.length > 0 ? filteredRepos.map((repo: Repository) => (
                     <Card key={repo.id} onClick={() => navigate(`/repo/${repo.owner}/${repo.name}`)} className="p-5 flex flex-col gap-3 group hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors pointer-events-none" />
 
@@ -76,7 +107,6 @@ export const Repositories: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* Creator avatar (top contributor) + org badge for org repos */}
                             <div className="shrink-0 relative" title={repo.creatorLogin || repo.owner}>
                                 {repo.creatorAvatarUrl ? (
                                     <img
@@ -89,7 +119,6 @@ export const Repositories: React.FC = () => {
                                         <User size={14} className="text-slate-400" />
                                     </div>
                                 )}
-                                {/* Org logo as small badge overlay for org repos */}
                                 {!repo.isOwnedByUser && repo.ownerAvatarUrl && (
                                     <img
                                         src={repo.ownerAvatarUrl}
@@ -122,7 +151,11 @@ export const Repositories: React.FC = () => {
                             )}
                         </div>
                     </Card>
-                ))}
+                )) : (
+                    <Card className="p-8 text-center text-slate-400">
+                        No repositories match this search and filter combination.
+                    </Card>
+                )}
             </div>
         </div>
     );

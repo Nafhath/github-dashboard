@@ -27,10 +27,10 @@ export const RepoDetails: React.FC = () => {
     const navigate = useNavigate();
     const [activePanel, setActivePanel] = useState<PanelType>(null);
 
-    const { data: repo, loading, error } = useApi(() => api.getRepoDetails(owner!, repoName!), [owner, repoName]);
+    const { data: repo, loading, error } = useApi(() => api.getRepoDetails(owner!, repoName!), { deps: [owner, repoName] });
     const { data: commits, loading: commitsLoading } = useApi(
         () => api.getRepoCommits(owner!, repoName!),
-        [owner, repoName]
+        { deps: [owner, repoName] }
     );
 
     if (loading) return <div className="flex h-[80vh] items-center justify-center"><Spinner size={50} /></div>;

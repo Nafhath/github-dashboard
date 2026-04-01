@@ -88,3 +88,40 @@ export const createGroup = async (req, res, next) => {
         next(error);
     }
 };
+
+export const updateGroup = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { name, description, repos } = req.body;
+
+        const group = await Group.findById(id);
+
+        if (!group) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+
+        if (typeof name === 'string') {
+            group.name = name.trim() || group.name;
+        }
+
+        if (typeof description === 'string') {
+            group.description = description;
+        }
+
+        if (Array.isArray(repos)) {
+            group.repos = [...new Set(repos.filter(Boolean))];
+        }
+
+        const savedGroup = await group.save();
+
+        res.json({
+            id: savedGroup._id,
+            name: savedGroup.name,
+            description: savedGroup.description,
+            repoIds: savedGroup.repos,
+            totalCommits: 0
+        });
+    } catch (error) {
+        next(error);
+    }
+};

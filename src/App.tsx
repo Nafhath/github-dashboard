@@ -9,6 +9,7 @@ import { Analytics } from './pages/Analytics';
 import { Spinner } from './components/ui/Spinner';
 import { Button } from './components/ui/Button';
 import { api } from './services/api';
+import { getCachedApiValue } from './hooks/useApi';
 
 type BootState = 'booting' | 'ready' | 'error';
 
@@ -117,6 +118,12 @@ function App() {
         }
       } catch (error) {
         if (cancelled) {
+          return;
+        }
+
+        if (getCachedApiValue('dashboard')) {
+          setBootState('ready');
+          setBootError(null);
           return;
         }
 

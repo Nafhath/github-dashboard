@@ -41,6 +41,11 @@ export const api = {
         return res.data;
     },
 
+    updateGroup: async (id: string, payload: { name?: string; description?: string; repos?: string[] }) => {
+        const res = await axios.put(`${API_BASE_URL}/groups/${id}`, payload);
+        return res.data;
+    },
+
     getAnalytics: async () => {
         const res = await axios.get(`${API_BASE_URL}/analytics`);
         return res.data;

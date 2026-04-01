@@ -11,10 +11,10 @@ import type { Activity } from '../types';
 
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
-    const { data, loading, error } = useApi(api.getDashboardStats);
+    const { data, loading, error, isCachedData } = useApi(api.getDashboardStats, { cacheKey: 'dashboard' });
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
-    if (error || !data) return <div className="text-red-400">Failed to load dashboard: {error}</div>;
+    if (!data) return <div className="text-red-400">Failed to load dashboard: {error}</div>;
 
     const getActivityIcon = (type: string) => {
         switch (type) {
@@ -52,6 +52,11 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Stats Cards */}
+            {(isCachedData || error) && (
+                <Card className="p-4 text-sm text-sky-100 border-sky-500/20 bg-sky-500/10">
+                    Showing your last synced dashboard while the backend reconnects.
+                </Card>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="flex flex-col justify-between group hover:-translate-y-1 transition-transform duration-300">
                     <div className="flex items-center justify-between mb-4">
