@@ -62,10 +62,8 @@ export const getAnalyticsStats = async (req, res, next) => {
                         entry.author?.login?.toLowerCase() === targetLogin.toLowerCase()
                     );
                     const weeks = contributor?.weeks?.slice(-8) || [];
-                    const now = new Date();
-                    commitTimeline = weeks.map((week, i) => {
-                        const d = new Date(now);
-                        d.setDate(d.getDate() - (7 * (7 - i)));
+                    commitTimeline = weeks.map((week) => {
+                        const d = new Date(week.w * 1000);
                         return {
                             date: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
                             commits: week.c
@@ -79,13 +77,16 @@ export const getAnalyticsStats = async (req, res, next) => {
 
         // Fallback timeline if stats unavailable
         if (commitTimeline.length === 0) {
-            const base = Math.max(1, Math.round(totalUserCommits / 8));
+            const contributedRepoCount = contributedRepos.length;
+            const base = contributedRepoCount > 0
+                ? Math.round(totalUserCommits / contributedRepoCount)
+                : 0;
             commitTimeline = Array.from({ length: 8 }, (_, i) => {
                 const d = new Date();
                 d.setDate(d.getDate() - (7 * (7 - i)));
                 return {
                     date: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-                    commits: Math.round(base * (0.5 + Math.random()))
+                    commits: base
                 };
             });
         }

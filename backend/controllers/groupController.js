@@ -6,12 +6,17 @@ export const getGroups = async (req, res, next) => {
         const username = req.query.username || 'octocat';
         const groups = await Group.find().sort({ createdAt: -1 });
         const repos = await fetchRepositories(username);
-        const repoByIdOrName = new Map();
+        const repoById = new Map();
+        const repoByFullName = new Map();
+        const reposByName = new Map();
 
         repos.forEach((repo) => {
-            repoByIdOrName.set(repo.id, repo);
-            repoByIdOrName.set(repo.name, repo);
-            repoByIdOrName.set(`${repo.owner}/${repo.name}`, repo);
+            repoById.set(repo.id, repo);
+            repoByFullName.set(`${repo.owner}/${repo.name}`, repo);
+
+            const existingRepos = reposByName.get(repo.name) || [];
+            existingRepos.push(repo);
+            reposByName.set(repo.name, existingRepos);
         });
 
         // Enrich groups with total commits
@@ -22,7 +27,12 @@ export const getGroups = async (req, res, next) => {
                 // Sum commits for all repos in this group
                 if (group.repos && group.repos.length > 0) {
                     const commitPromises = group.repos.map((repoRef) => {
-                        const matchedRepo = repoByIdOrName.get(repoRef);
+                        const matchedRepo = repoById.get(repoRef)
+                            || repoByFullName.get(repoRef)
+                            || (() => {
+                                const matchingRepos = reposByName.get(repoRef) || [];
+                                return matchingRepos.length === 1 ? matchingRepos[0] : null;
+                            })();
 
                         if (!matchedRepo) {
                             return 0;
