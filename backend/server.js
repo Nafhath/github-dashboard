@@ -16,12 +16,31 @@ const allowedOrigins = [
     'http://127.0.0.1:5173',
 ].filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+    if (!origin) {
+        return true;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const { hostname, protocol } = new URL(origin);
+        const isVercelDeployment = protocol === 'https:' && hostname.endsWith('.vercel.app');
+        return isVercelDeployment;
+    } catch {
+        return false;
+    }
+};
+
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (isAllowedOrigin(origin)) {
             return callback(null, true);
         }
 
+        console.warn(`Blocked by CORS: ${origin}`);
         return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
