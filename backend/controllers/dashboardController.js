@@ -1,10 +1,11 @@
-import { fetchRepositories } from '../services/githubService.js';
+import { buildGithubContext, fetchRepositories } from '../services/githubService.js';
 import axios from 'axios';
 
 export const getDashboardStats = async (req, res, next) => {
     try {
-        const username = req.query.username || 'octocat';
-        const repos = await fetchRepositories(username);
+        const context = buildGithubContext(req);
+        const username = context.username;
+        const repos = await fetchRepositories(context);
 
         // Only count repos where the user has committed (userCommits > 0)
         const contributedRepos = repos.filter(r => r.userCommits > 0);
@@ -22,14 +23,13 @@ export const getDashboardStats = async (req, res, next) => {
         // Real activity from GitHub: use authenticated events (includes private) or public events
         let activities = [];
         try {
-            if (process.env.GITHUB_TOKEN) {
+            const token = context.token || process.env.GITHUB_TOKEN;
+            if (token) {
                 const headers = {
                     'Accept': 'application/vnd.github.v3+json',
-                    'Authorization': `token ${process.env.GITHUB_TOKEN}`
+                    'Authorization': `token ${token}`
                 };
-                // First get the authenticated user's real login (could be 'Nafhath', not 'octocat')
-                const meRes = await axios.get('https://api.github.com/user', { headers });
-                const realLogin = meRes.data.login;
+                const realLogin = req.auth?.login || (await axios.get('https://api.github.com/user', { headers })).data.login;
                 // Fetch events performed by the authenticated user
                 const eventsRes = await axios.get(
                     `https://api.github.com/users/${realLogin}/events?per_page=15`,

@@ -6,12 +6,14 @@ import { Repositories } from './pages/Repositories';
 import { RepoDetails } from './pages/RepoDetails';
 import { Groups } from './pages/Groups';
 import { Analytics } from './pages/Analytics';
+import { AuthCallback } from './pages/AuthCallback';
 import { Spinner } from './components/ui/Spinner';
 import { Button } from './components/ui/Button';
 import { api } from './services/api';
 import { getCachedApiValue } from './hooks/useApi';
 import { AppShellProvider, type BackendStatus } from './context/AppShellContext';
 import { ToastProvider } from './context/ToastContext';
+import { AuthProvider } from './context/AuthContext';
 
 type BootState = 'booting' | 'ready' | 'error';
 
@@ -196,17 +198,20 @@ function App() {
   return (
     <AppShellProvider backendStatus={backendStatus}>
       <ToastProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<AppLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="repos" element={<Repositories />} />
-              <Route path="repo/:owner/:repoName" element={<RepoDetails />} />
-              <Route path="groups" element={<Groups />} />
-              <Route path="analytics" element={<Analytics />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/" element={<AppLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="repos" element={<Repositories />} />
+                <Route path="repo/:owner/:repoName" element={<RepoDetails />} />
+                <Route path="groups" element={<Groups />} />
+                <Route path="analytics" element={<Analytics />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
       </ToastProvider>
     </AppShellProvider>
   );

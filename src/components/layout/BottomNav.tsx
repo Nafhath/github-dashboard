@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderGit2, FolderOpen, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, FolderGit2, FolderOpen, BarChart2, LogIn, LogOut } from 'lucide-react';
 import { cn } from './Sidebar';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -11,6 +13,9 @@ const navItems = [
 ];
 
 export const BottomNav: React.FC = () => {
+    const { isAuthenticated, login, logout } = useAuth();
+    const { showToast } = useToast();
+
     return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#070e17]/90 backdrop-blur-xl border-t border-slate-800/50 z-50 pb-safe shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.5)]">
             <div className="flex justify-around items-center h-16 px-2">
@@ -36,6 +41,23 @@ export const BottomNav: React.FC = () => {
                         )}
                     </NavLink>
                 ))}
+                <button
+                    className="relative flex flex-col items-center justify-center w-full h-full space-y-1.5 transition-all duration-300 text-slate-500 hover:text-slate-300"
+                    onClick={async () => {
+                        if (isAuthenticated) {
+                            await logout();
+                            showToast('Signed out', 'info');
+                            return;
+                        }
+
+                        login();
+                    }}
+                >
+                    {isAuthenticated ? <LogOut size={20} /> : <LogIn size={20} />}
+                    <span className="text-[10px] uppercase font-bold tracking-widest">
+                        {isAuthenticated ? 'Logout' : 'Login'}
+                    </span>
+                </button>
             </div>
         </nav>
     );

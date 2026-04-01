@@ -1,8 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderGit2, FolderOpen, BarChart2, Settings } from 'lucide-react';
+import { LayoutDashboard, FolderGit2, FolderOpen, BarChart2, LogIn, LogOut } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -16,6 +18,9 @@ const navItems = [
 ];
 
 export const Sidebar: React.FC = () => {
+    const { user, isAuthenticated, login, logout } = useAuth();
+    const { showToast } = useToast();
+
     return (
         <aside className="hidden md:flex flex-col w-64 h-screen bg-[#070e17] border-r border-slate-800/50 p-4 sticky top-0 z-40">
             <div className="flex items-center gap-3 px-2 mb-8 mt-2">
@@ -53,10 +58,40 @@ export const Sidebar: React.FC = () => {
             </nav>
 
             <div className="mt-auto pt-4 border-t border-slate-800/50">
-                <button className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 w-full hover:bg-slate-800/50 text-slate-400 hover:text-white group">
-                    <Settings size={20} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
-                    Settings
-                </button>
+                {isAuthenticated && user ? (
+                    <div className="space-y-3">
+                        <a
+                            href={user.htmlUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/60 transition-colors"
+                        >
+                            <img src={user.avatarUrl} alt={user.login} className="w-10 h-10 rounded-full object-cover border border-slate-700" />
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-white truncate">{user.name || user.login}</p>
+                                <p className="text-xs text-slate-400 truncate">@{user.login}</p>
+                            </div>
+                        </a>
+                        <button
+                            className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 w-full hover:bg-slate-800/50 text-slate-400 hover:text-white group"
+                            onClick={async () => {
+                                await logout();
+                                showToast('Signed out', 'info');
+                            }}
+                        >
+                            <LogOut size={20} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
+                            Sign Out
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 w-full hover:bg-slate-800/50 text-slate-400 hover:text-white group"
+                        onClick={login}
+                    >
+                        <LogIn size={20} className="text-slate-500 group-hover:text-slate-300 transition-colors" />
+                        Sign In With GitHub
+                    </button>
+                )}
             </div>
         </aside>
     );

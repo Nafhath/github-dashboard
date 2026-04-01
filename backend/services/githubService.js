@@ -1,65 +1,140 @@
 import axios from 'axios';
 
-// Simple in-memory cache to avoid rate limiting
-// In a real production app, this would be Redis
 const cache = new Map();
-const CACHE_TTL = 1000 * 60 * 15; // 15 minutes
+const CACHE_TTL = 1000 * 60 * 15;
 
-const getGithubClient = () => {
+const getGithubClient = (token) => {
     const headers = {
-        'Accept': 'application/vnd.github.v3+json',
+        Accept: 'application/vnd.github.v3+json',
     };
 
-    if (process.env.GITHUB_TOKEN) {
-        headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+    if (token) {
+        headers.Authorization = `token ${token}`;
     }
 
     return axios.create({
         baseURL: 'https://api.github.com',
-        headers
+        headers,
     });
 };
 
-export const fetchRepositories = async (username = 'octocat') => {
-    const cacheKey = `repos_${username}`;
+const getCacheValue = (cacheKey) => {
+    if (!cache.has(cacheKey)) {
+        return null;
+    }
 
-    if (cache.has(cacheKey)) {
-        const cachedData = cache.get(cacheKey);
-        if (Date.now() - cachedData.timestamp < CACHE_TTL) {
-            return cachedData.data;
-        }
+    const cachedData = cache.get(cacheKey);
+    if (Date.now() - cachedData.timestamp >= CACHE_TTL) {
+        cache.delete(cacheKey);
+        return null;
+    }
+
+    return cachedData.data;
+};
+
+const setCacheValue = (cacheKey, data) => {
+    cache.set(cacheKey, { timestamp: Date.now(), data });
+};
+
+const getContextCacheId = ({ username = 'octocat', token, authLogin }) => {
+    if (authLogin) {
+        return `auth_${authLogin}`;
+    }
+
+    if (token) {
+        return `token_${username}`;
+    }
+
+    return username;
+};
+
+export const resolveGithubLogin = async ({ username = 'octocat', token } = {}) => {
+    if (!token) {
+        return username;
     }
 
     try {
-        const client = getGithubClient();
+        const client = getGithubClient(token);
+        const meRes = await client.get('/user');
+        return meRes.data.login || username;
+    } catch (error) {
+        console.error('Failed to resolve authenticated GitHub login:', error.message);
+        return username;
+    }
+};
+
+export const fetchCommitCount = async (owner, repo, author = null, options = {}) => {
+    const contextId = getContextCacheId(options);
+    const cacheKey = `commits_${contextId}_${owner}_${repo}${author ? `_${author}` : ''}`;
+    const cachedValue = getCacheValue(cacheKey);
+
+    if (cachedValue !== null) {
+        return cachedValue;
+    }
+
+    try {
+        const client = getGithubClient(options.token);
+        const authorParam = author ? `&author=${encodeURIComponent(author)}` : '';
+        const response = await client.get(`/repos/${owner}/${repo}/commits?per_page=1${authorParam}`, {
+            validateStatus: (status) => status < 500
+        });
+
+        if (response.status === 409) return 0;
+        if (Array.isArray(response.data) && response.data.length === 0) return 0;
+
+        let commitCount = 1;
+        if (response.headers.link) {
+            const match = response.headers.link.match(/page=(\d+)>; rel="last"/);
+            if (match) {
+                commitCount = parseInt(match[1], 10);
+            }
+        }
+
+        setCacheValue(cacheKey, commitCount);
+        return commitCount;
+    } catch (error) {
+        console.error(`Error fetching commit count for ${owner}/${repo}:`, error.message);
+        return 0;
+    }
+};
+
+export const fetchRepositories = async ({ username = 'octocat', token } = {}) => {
+    const authLogin = await resolveGithubLogin({ username, token });
+    const contextId = getContextCacheId({ username, token, authLogin });
+    const cacheKey = `repos_${contextId}`;
+    const cachedValue = getCacheValue(cacheKey);
+
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    try {
+        const client = getGithubClient(token);
         let response;
-        let authenticatedLogin = username;
 
-        if (process.env.GITHUB_TOKEN && username === 'octocat') {
-            // Fetch authenticated user's repos (includes all org repos they're a member of)
-            response = await client.get(`/user/repos?per_page=100&sort=updated&affiliation=owner,organization_member,collaborator`);
-
-            // Get authenticated user's actual login
-            try {
-                const meRes = await client.get(`/user`);
-                authenticatedLogin = meRes.data.login;
-            } catch (_) { }
+        if (token) {
+            response = await client.get('/user/repos?per_page=100&sort=updated&affiliation=owner,organization_member,collaborator');
+        } else if (process.env.GITHUB_TOKEN && username === 'octocat') {
+            const envClient = getGithubClient(process.env.GITHUB_TOKEN);
+            response = await envClient.get('/user/repos?per_page=100&sort=updated&affiliation=owner,organization_member,collaborator');
+            token = process.env.GITHUB_TOKEN;
         } else {
             response = await client.get(`/users/${username}/repos?per_page=100&sort=updated`);
         }
 
-        // Enrich top repos with total commits + user-specific commit count + avatar
+        const effectiveLogin = token ? await resolveGithubLogin({ username, token }) : username;
+        const effectiveClient = getGithubClient(token);
         const topRepos = response.data.slice(0, 15);
-        const authLogin = authenticatedLogin;
 
         const enrichedRepos = await Promise.all(
             topRepos.map(async (repo) => {
                 const [totalCommits, userCommits, topContributorRes] = await Promise.all([
-                    fetchCommitCount(repo.owner.login, repo.name),
-                    fetchCommitCount(repo.owner.login, repo.name, authLogin),
-                    client.get(`/repos/${repo.owner.login}/${repo.name}/contributors?per_page=1`)
+                    fetchCommitCount(repo.owner.login, repo.name, null, { username, token, authLogin: effectiveLogin }),
+                    fetchCommitCount(repo.owner.login, repo.name, effectiveLogin, { username, token, authLogin: effectiveLogin }),
+                    effectiveClient.get(`/repos/${repo.owner.login}/${repo.name}/contributors?per_page=1`)
                         .catch(() => ({ data: [] }))
                 ]);
+
                 const topContributor = topContributorRes.data[0] || null;
                 return {
                     id: repo.id.toString(),
@@ -76,19 +151,18 @@ export const fetchRepositories = async (username = 'octocat') => {
                     userCommits,
                     isPrivate: repo.private,
                     updatedAt: repo.updated_at,
-                    isOwnedByUser: repo.owner.login.toLowerCase() === authLogin.toLowerCase()
+                    isOwnedByUser: repo.owner.login.toLowerCase() === effectiveLogin.toLowerCase()
                 };
             })
         );
 
-        // Sort: repos created by the authenticated user first, then org repos
         enrichedRepos.sort((a, b) => {
             if (a.isOwnedByUser && !b.isOwnedByUser) return -1;
             if (!a.isOwnedByUser && b.isOwnedByUser) return 1;
             return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         });
 
-        cache.set(cacheKey, { timestamp: Date.now(), data: enrichedRepos });
+        setCacheValue(cacheKey, enrichedRepos);
         return enrichedRepos;
     } catch (error) {
         console.error(`Error fetching repos for ${username}:`, error.message);
@@ -96,76 +170,19 @@ export const fetchRepositories = async (username = 'octocat') => {
     }
 };
 
-export const resolveGithubLogin = async (username = 'octocat') => {
-    if (!(process.env.GITHUB_TOKEN && username === 'octocat')) {
-        return username;
+export const fetchRepoDetails = async (owner, repo, options = {}) => {
+    const contextId = getContextCacheId(options);
+    const cacheKey = `repo_details_${contextId}_${owner}_${repo}`;
+    const cachedValue = getCacheValue(cacheKey);
+
+    if (cachedValue) {
+        return cachedValue;
     }
 
     try {
-        const client = getGithubClient();
-        const meRes = await client.get('/user');
-        return meRes.data.login || username;
-    } catch (error) {
-        console.error('Failed to resolve authenticated GitHub login:', error.message);
-        return username;
-    }
-};
-
-export const fetchCommitCount = async (owner, repo, author = null) => {
-    const cacheKey = `commits_${owner}_${repo}${author ? `_${author}` : ''}`;
-
-    if (cache.has(cacheKey)) {
-        const cachedData = cache.get(cacheKey);
-        if (Date.now() - cachedData.timestamp < CACHE_TTL) {
-            return cachedData.data;
-        }
-    }
-
-    try {
-        const client = getGithubClient();
-        const authorParam = author ? `&author=${encodeURIComponent(author)}` : '';
-        // Pagination trick to get total commits without fetching all payload pages
-        // See: https://gist.github.com/0penBrain/7be59a48aba778c955d992aa69e524c5
-        const response = await client.get(`/repos/${owner}/${repo}/commits?per_page=1${authorParam}`, {
-            validateStatus: (status) => status < 500 // Resolve even on 409 (empty repo)
-        });
-
-        if (response.status === 409) return 0; // Empty repository
-        // If data is empty array, the author has no commits in this repo
-        if (Array.isArray(response.data) && response.data.length === 0) return 0;
-
-        let commitCount = 1;
-        if (response.headers.link) {
-            // Extract the last page number from the Link header
-            // e.g. <https://api.github.com/repositories/123/commits?per_page=1&page=45>; rel="last"
-            const match = response.headers.link.match(/page=(\d+)>; rel="last"/);
-            if (match) {
-                commitCount = parseInt(match[1], 10);
-            }
-        }
-
-        cache.set(cacheKey, { timestamp: Date.now(), data: commitCount });
-        return commitCount;
-    } catch (error) {
-        console.error(`Error fetching commit count for ${owner}/${repo}:`, error.message);
-        return 0; // Graceful fallback
-    }
-};
-
-export const fetchRepoDetails = async (owner, repo) => {
-    const cacheKey = `repo_details_${owner}_${repo}`;
-
-    if (cache.has(cacheKey)) {
-        const cachedData = cache.get(cacheKey);
-        if (Date.now() - cachedData.timestamp < CACHE_TTL) {
-            return cachedData.data;
-        }
-    }
-
-    try {
-        const client = getGithubClient();
-
+        const client = getGithubClient(options.token || process.env.GITHUB_TOKEN);
         let repoRes;
+
         try {
             repoRes = await client.get(`/repos/${owner}/${repo}`);
         } catch (err) {
@@ -178,14 +195,13 @@ export const fetchRepoDetails = async (owner, repo) => {
             throw err;
         }
 
-        // Fetch contributors and languages in parallel (safe, non-fatal)
         const [contribsRes, langsRes] = await Promise.all([
             client.get(`/repos/${owner}/${repo}/contributors?per_page=15`).catch(() => ({ data: [] })),
             client.get(`/repos/${owner}/${repo}/languages`).catch(() => ({ data: {} }))
         ]);
 
         const repoData = repoRes.data;
-        const commitCount = await fetchCommitCount(owner, repo);
+        const commitCount = await fetchCommitCount(owner, repo, null, options);
 
         const details = {
             id: repoData.id.toString(),
@@ -209,7 +225,7 @@ export const fetchRepoDetails = async (owner, repo) => {
             languages: langsRes.data
         };
 
-        cache.set(cacheKey, { timestamp: Date.now(), data: details });
+        setCacheValue(cacheKey, details);
         return details;
     } catch (error) {
         console.error(`Error fetching repo details for ${owner}/${repo}:`, error.message);
@@ -220,24 +236,23 @@ export const fetchRepoDetails = async (owner, repo) => {
     }
 };
 
-export const fetchRecentCommits = async (owner, repo, perPage = 30) => {
-    const cacheKey = `commits_list_${owner}_${repo}`;
+export const fetchRecentCommits = async (owner, repo, perPage = 30, options = {}) => {
+    const contextId = getContextCacheId(options);
+    const cacheKey = `commits_list_${contextId}_${owner}_${repo}`;
+    const cachedValue = getCacheValue(cacheKey);
 
-    if (cache.has(cacheKey)) {
-        const cachedData = cache.get(cacheKey);
-        if (Date.now() - cachedData.timestamp < CACHE_TTL) {
-            return cachedData.data;
-        }
+    if (cachedValue) {
+        return cachedValue;
     }
 
     try {
-        const client = getGithubClient();
+        const client = getGithubClient(options.token || process.env.GITHUB_TOKEN);
         const response = await client.get(`/repos/${owner}/${repo}/commits?per_page=${perPage}`);
 
         const commits = response.data.map(c => ({
             sha: c.sha.substring(0, 7),
             fullSha: c.sha,
-            message: c.commit.message.split('\n')[0], // First line only
+            message: c.commit.message.split('\n')[0],
             author: c.commit.author.name,
             authorLogin: c.author?.login || null,
             authorAvatar: c.author?.avatar_url || null,
@@ -245,10 +260,16 @@ export const fetchRecentCommits = async (owner, repo, perPage = 30) => {
             htmlUrl: c.html_url
         }));
 
-        cache.set(cacheKey, { timestamp: Date.now(), data: commits });
+        setCacheValue(cacheKey, commits);
         return commits;
     } catch (error) {
         console.error(`Error fetching commits for ${owner}/${repo}:`, error.message);
         throw new Error('Failed to fetch commits from GitHub');
     }
 };
+
+export const buildGithubContext = (req, fallbackUsername = 'octocat') => ({
+    username: req.auth?.login || req.query.username || fallbackUsername,
+    token: req.auth?.accessToken || null,
+    authLogin: req.auth?.login || null,
+});

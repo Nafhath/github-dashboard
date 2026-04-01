@@ -1,11 +1,11 @@
 import Group from '../models/Group.js';
-import { fetchCommitCount, fetchRepositories } from '../services/githubService.js';
+import { buildGithubContext, fetchCommitCount, fetchRepositories } from '../services/githubService.js';
 
 export const getGroups = async (req, res, next) => {
     try {
-        const username = req.query.username || 'octocat';
+        const context = buildGithubContext(req);
         const groups = await Group.find().sort({ createdAt: -1 });
-        const repos = await fetchRepositories(username);
+        const repos = await fetchRepositories(context);
         const repoById = new Map();
         const repoByFullName = new Map();
         const reposByName = new Map();
@@ -38,7 +38,7 @@ export const getGroups = async (req, res, next) => {
                             return 0;
                         }
 
-                        return fetchCommitCount(matchedRepo.owner, matchedRepo.name);
+                        return fetchCommitCount(matchedRepo.owner, matchedRepo.name, null, context);
                     });
                     const commitCounts = await Promise.all(commitPromises);
                     totalCommits = commitCounts.reduce((sum, count) => sum + count, 0);

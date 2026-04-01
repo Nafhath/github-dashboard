@@ -8,9 +8,11 @@ import { Spinner } from '../components/ui/Spinner';
 import { api } from '../services/api';
 import { useApi } from '../hooks/useApi';
 import type { Activity } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 export const Dashboard: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { data, loading, error, isCachedData, lastSyncedAt } = useApi(api.getDashboardStats, { cacheKey: 'dashboard' });
 
     if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size={40} /></div>;
@@ -39,12 +41,12 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-secondary p-[2px]">
                         <div className="w-full h-full rounded-full bg-slate-900 border-2 border-slate-900 overflow-hidden">
-                            <img src="https://avatars.githubusercontent.com/u/64386740?s=400&u=a4192efd15e5e8468904f26c4e3defa88cf1dd77&v=4" alt="User Avatar" className="w-full h-full object-cover" />
+                            <img src={user?.avatarUrl || "https://avatars.githubusercontent.com/u/64386740?s=400&u=a4192efd15e5e8468904f26c4e3defa88cf1dd77&v=4"} alt="User Avatar" className="w-full h-full object-cover" />
                         </div>
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-white tracking-tight">Dashboard</h1>
-                        <p className="text-slate-400 text-sm">Welcome back, Nafhath</p>
+                        <p className="text-slate-400 text-sm">Welcome back, {user?.name || user?.login || 'Developer'}</p>
                         <p className="text-slate-500 text-xs mt-1">Last synced {lastSyncedLabel}</p>
                     </div>
                 </div>

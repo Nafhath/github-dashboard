@@ -48,3 +48,11 @@ export interface Group {
     repoIds: string[];
     totalCommits: number;
 }
+
+export interface AuthUser {
+    id: number;
+    login: string;
+    name: string | null;
+    avatarUrl: string;
+    htmlUrl: string;
+}

@@ -1,10 +1,10 @@
-import { fetchRepositories, resolveGithubLogin } from '../services/githubService.js';
+import { buildGithubContext, fetchRepositories, resolveGithubLogin } from '../services/githubService.js';
 import axios from 'axios';
 
 export const getAnalyticsStats = async (req, res, next) => {
     try {
-        const username = req.query.username || 'octocat';
-        const repos = await fetchRepositories(username);
+        const context = buildGithubContext(req);
+        const repos = await fetchRepositories(context);
 
         // Only consider repos where the user has actually committed
         const contributedRepos = repos.filter(r => (r.userCommits || 0) > 0);
@@ -45,14 +45,15 @@ export const getAnalyticsStats = async (req, res, next) => {
             const topRepo = contributedRepos
                 .filter(r => (r.userCommits || 0) > 0)
                 .sort((a, b) => (b.userCommits || 0) - (a.userCommits || 0))[0];
-            if (topRepo && process.env.GITHUB_TOKEN) {
-                const targetLogin = await resolveGithubLogin(username);
+            const token = context.token || process.env.GITHUB_TOKEN;
+            if (topRepo && token) {
+                const targetLogin = await resolveGithubLogin(context);
                 const statsRes = await axios.get(
                     `https://api.github.com/repos/${topRepo.owner}/${topRepo.name}/stats/contributors`,
                     {
                         headers: {
                             Accept: 'application/vnd.github.v3+json',
-                            Authorization: `token ${process.env.GITHUB_TOKEN}`
+                            Authorization: `token ${token}`
                         },
                         validateStatus: s => s < 500
                     }
